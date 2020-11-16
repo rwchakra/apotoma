@@ -1,0 +1,10 @@
+/virtualenv/
+/.idea/
+/venv/
+/uwiz.egg-info/
+/dist/
+/build/
+**/tmp/
+/scripts/examples_build/
+/examples_build/
+/docs/_build/
