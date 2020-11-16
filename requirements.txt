@@ -1,2 +1,3 @@
 # As few dependencies as possible
 
+tensorflow==2.3.1
