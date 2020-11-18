@@ -19,10 +19,10 @@ if __name__ == '__main__':
     true_labels = None
 
     args = {'d': 'mnist', 'is_classification': True,
-            'dsa': True, 'lsa': False, 'batch_size': 128,
+            'dsa': False, 'lsa': True, 'batch_size': 128,
             'var_threshold': 1e-5, 'upper_bound': 2000,
             'n_bucket': 1000, 'num_classes': 10,
-            'layer_names': ['activation_3']}
+            'layer_names': ['activation_3'], 'saved_path': './tmp/'}
 
     assert args['d'] in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
     assert args['lsa'] ^ args['dsa'], "Select either 'lsa' or 'dsa'"
@@ -53,4 +53,5 @@ if __name__ == '__main__':
     sa_target = novelty_score.calc(x_target, "target")
 
     # Evaluation
-    _auc_roc(sa_test, sa_target)
+    score = _auc_roc(sa_test, sa_target)
+    print(score)

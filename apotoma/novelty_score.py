@@ -18,5 +18,5 @@ class NoveltyScore(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def calc(self, target_data: tf.data.Dataset):
+    def calc(self, target_data: tf.data.Dataset, ds_name: str):
         pass
