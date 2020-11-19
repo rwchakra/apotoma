@@ -116,8 +116,8 @@ class SurpriseAdequacy(NoveltyScore):
 
             return ats, pred
 
-    # TODO: Think about (long term): Maybe no caching as we keep this in memory anyways
-    def _get_or_calc_train_ats(self, use_cache = False):
+
+    def _load_or_calc_train_ats(self, use_cache = False):
 
         """Load or get actviation traces of training inputs
 
@@ -153,7 +153,7 @@ class SurpriseAdequacy(NoveltyScore):
                             None. class_matrix is init() variable of NoveltyScore
 
         """
-        self._get_or_calc_train_ats()
+        self._load_or_calc_train_ats()
         for i, label in enumerate(self.train_pred):
             if label not in self.class_matrix:
                 self.class_matrix[label] = []
@@ -218,6 +218,8 @@ class LSA(SurpriseAdequacy):
             for label in range(self.args['num_classes']):
                 # Shape of (num_activation nodes x num_examples_by_label)
                 row_vectors = np.transpose(self.train_ats[self.class_matrix[label]])
+                #TODO, Vectorise below. No need for loops
+
                 for i in range(row_vectors.shape[0]):
                     if (
                             np.var(row_vectors[i]) < self.args['var_threshold']
@@ -323,7 +325,7 @@ class DSA(SurpriseAdequacy):
 
         """
 
-        #TODO Make sure len(self.train_pred)%batch_size == 0. For MNIST and CIFAR-10 it's fine, but not general.
+
         dsa = np.empty(shape=target_pred.shape[0])
         batch_size = 500
         start = 0
