@@ -20,3 +20,7 @@ class NoveltyScore(abc.ABC):
     @abc.abstractmethod
     def calc(self, target_data: tf.data.Dataset, ds_name: str):
         pass
+
+    @abc.abstractmethod
+    def clear_cache(self, saved_path: str):
+        pass
