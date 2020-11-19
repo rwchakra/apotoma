@@ -20,7 +20,7 @@ if __name__ == '__main__':
     true_labels = None
 
     args = {'d': 'mnist', 'is_classification': True,
-            'dsa': True, 'lsa': False, 'batch_size': 128,
+            'dsa': False, 'lsa': True, 'batch_size': 128,
             'var_threshold': 1e-5, 'upper_bound': 2000,
             'n_bucket': 1000, 'num_classes': 10,
             'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
