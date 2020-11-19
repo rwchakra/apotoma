@@ -212,24 +212,20 @@ class LSA(SurpriseAdequacy):
 
         """
 
-        #removed_rows = []
-        removed_rows = np.array([], dtype=int)
+        removed_rows = []
+
         if self.args['is_classification']:
 
             for label in range(self.args['num_classes']):
                 # Shape of (num_activation nodes x num_examples_by_label)
                 row_vectors = np.transpose(self.train_ats[self.class_matrix[label]])
-                #TODO, Vectorise below. No need for loops
+                positions = np.where(np.var(row_vectors) < self.args['var_threshold'])[0]
 
-                """for i in range(row_vectors.shape[0]):
-                    if (
-                            np.var(row_vectors[i]) < self.args['var_threshold']
-                            and i not in removed_rows
-                    ):
-                        # Add activation node to removed_rows
-                        removed_rows.append(i)"""
+                for p in positions:
+                    removed_rows.append(p)
 
-                np.append(removed_rows, np.where(np.var(row_vectors) < self.args['var_threshold'])[0])
+            removed_rows = list(set(removed_rows))
+
             kdes = {}
             for label in tqdm(range(self.args['num_classes']), desc="kde"):
 
