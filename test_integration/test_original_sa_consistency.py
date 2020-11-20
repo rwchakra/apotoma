@@ -24,9 +24,9 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
                                                 args={}  # TODO @Rwiddhi args
                                                 )
 
-        original_dsa = np.load("./original_dsa.npy")
+        original_dsa = np.load("./assets/original_dsa.npy")
 
-        np.assert_almost_equal(actual=our_dsa,
-                               desired=original_dsa, decimal=5)
+        np.testing.assert_almost_equal(actual=our_dsa,
+                                       desired=original_dsa, decimal=5)
 
     # TODO @ Rwiddhi equivalent test for LSA
