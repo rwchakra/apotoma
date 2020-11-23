@@ -1,4 +1,4 @@
-"""Three separate stages:
+"""Stages:
 
     0. Function to generate ground truths:
         Input: model, x_test, test_pred
