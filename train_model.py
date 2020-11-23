@@ -7,7 +7,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.datasets import mnist, cifar10
 from tensorflow.keras import utils
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D, ZeroPadding2D, AveragePooling2D
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import Callback
 
@@ -98,13 +98,13 @@ class MNISTModel():
 
         print(model.summary())
         model.compile(
-            loss="categorical_crossentropy", optimizer="adadelta", metrics=["accuracy"]
+            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
         )
 
         model.fit(
             x_train,
             y_train,
-            epochs=10,
+            epochs=20,
             batch_size=128,
             shuffle=True,
             verbose=1,
@@ -114,11 +114,67 @@ class MNISTModel():
         model.save("./model/model_{}.h5".format(args.d))
 
 
+class LeNet4():
+
+    def __init__(self, args):
+        self.args = args
+
+    def train(self):
+
+        if self.args.d == 'mnist':
+            (x_train, y_train), (x_test, y_test) = mnist.load_data()
+            x_train = x_train.reshape(-1, 28, 28, 1)
+            x_test = x_test.reshape(-1, 28, 28, 1)
+
+        x_train = x_train.astype("float32")
+        x_test = x_test.astype("float32")
+        x_train = (x_train / 255.0) - (1.0 - CLIP_MAX)
+        x_test = (x_test / 255.0) - (1.0 - CLIP_MAX)
+
+        y_train = utils.to_categorical(y_train, 10)
+        y_test = utils.to_categorical(y_test, 10)
+
+        x_train, x_test = ZeroPadding2D(padding=2)(x_train), ZeroPadding2D(padding=2)(x_test)
+
+        print(x_train.shape[1:])
+
+
+
+        model = Sequential()
+        model.add(Conv2D(4, (5, 5), activation='relu', input_shape=x_train.shape[1:]))
+        model.add(AveragePooling2D())
+        model.add(Conv2D(16, (5, 5), activation='relu'))
+        model.add(AveragePooling2D())
+        model.add(Flatten())
+        model.add(Dense(120, activation='relu'))
+        model.add(Dense(10, activation='softmax'))
+
+        print(model.summary())
+        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+        model.fit(
+            x_train,
+            y_train,
+            epochs=10,
+            batch_size=128,
+            shuffle=True,
+            verbose=1,
+            validation_split=0.2,
+        )
+
+        model.save("./model/model_lenet4_{}.h5".format(args.d))
+
+
+
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", required=True, type=str)
     args = parser.parse_args()
     assert args.d in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
 
-    model = MNISTModel(args)
+    #model = MNISTModel(args)
+    model = LeNet4(args)
     model.train()

@@ -40,3 +40,30 @@
         Output: roc_auc_score(labels, pv_score_array)
     """
 
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.models import load_model
+
+class Dissector():
+
+    def __init__(self, model: tf.keras.Model, args: {}):
+
+        self.model = model
+        self.args = args
+
+    def generate_ground_truth(self, model: tf.keras.Model , x_test: tf.data.Dataset, y_test: tf.data.Dataset):
+
+        model = load_model(self.args['model_path'])
+        test_preds = model.predict_classes(x_test)
+        labels = np.argmax(y_test, axis=1)
+        corr = np.where(test_preds == labels)
+        incorr = np.where(test_preds != labels)
+        labels[corr] = 1
+        labels[incorr] = 0
+
+        return labels
+
+    def train_sub_models(self, layer_list: [], x_train: tf.data.Dataset, y_train: tf.data.Dataset, model: tf.keras.Model):
+
+        new_model = Model(input = model.layers[0].input. output = model.layers[1].output)
