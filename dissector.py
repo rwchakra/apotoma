@@ -44,6 +44,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import ZeroPadding2D, Dense, Flatten
+import os
 
 class Dissector():
 
@@ -54,7 +57,7 @@ class Dissector():
 
     def generate_ground_truth(self, model: tf.keras.Model , x_test: tf.data.Dataset, y_test: tf.data.Dataset):
 
-        model = load_model(self.args['model_path'])
+        #model = load_model(self.args['model_path'])
         test_preds = model.predict_classes(x_test)
         labels = np.argmax(y_test, axis=1)
         corr = np.where(test_preds == labels)
@@ -64,6 +67,39 @@ class Dissector():
 
         return labels
 
-    def train_sub_models(self, layer_list: [], x_train: tf.data.Dataset, y_train: tf.data.Dataset, model: tf.keras.Model):
+    def generate_sub_models(self, layer_list: [], model: tf.keras.Model):
 
-        new_model = Model(input = model.layers[0].input. output = model.layers[1].output)
+        for i, l in enumerate(layer_list):
+            n_model = Sequential()
+            for layer in model.layers[0:l]:
+                n_model.add(layer)
+
+            n_model.add(Flatten())
+            for layer in n_model.layers:
+                layer.trainable = False
+
+            n_model.add(Dense(10, activation='softmax'))
+            n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+            n_model.save("./submodels_dissector/model/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
+            print("Submodels generated for required layers: {}".format(layer_list))
+
+    def train_sub_models(self, submodel_path: str, x_train: tf.data.Dataset, y_train: tf.data.Dataset, epochs: int):
+
+        sub_models = os.listdir(submodel_path)
+
+        for i, m in enumerate(sub_models):
+            s_model = load_model(m)
+            s_model.fit(
+                x_train,
+                y_train,
+                epochs=epochs,
+                batch_size=128,
+                shuffle=True,
+                verbose=1,
+                validation_split=0.2,
+            )
+
+            s_model.save("./submodels_dissector/model/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
+            print("Stored trained submodels_dissector on the same directory")
+
+
