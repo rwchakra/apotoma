@@ -16,11 +16,11 @@
 
     3. Function to calculate prediction profile: One softmax vector per sub-model
         Input: List of trained sub_models
-        Outputs: k Array of softmax arrays, one for each sub_model, shape: #classes * #sub_models
+        Outputs: k Array of softmax arrays, one for each sub_model, shape: #inputs * #classes * #sub_models
 
     4. Function to calculate SV score
-        Input: a) k array of softmax arrays, one for each sub_model, shape: #classes * #sub_models
-               b) train_pred: Array of training predictions of original model M
+        Input: a) k array of softmax arrays, one for each sub_model, shape: #inputs * #classes * #sub_models
+               b) test_pred: Array of test predictions of original model M
 
         Output: Array of SV scores of length k, hopefully ordered by shallow to deep sub models.
 
@@ -65,7 +65,7 @@ class Dissector():
         labels[corr] = 1
         labels[incorr] = 0
 
-        return labels
+        return test_preds, labels
 
     def generate_sub_models(self, layer_list: [], model: tf.keras.Model):
 
@@ -101,5 +101,79 @@ class Dissector():
 
             s_model.save("./submodels_dissector/model/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
             print("Stored trained submodels_dissector on the same directory")
+
+
+    def sv_score(self, x_test: tf.data.Dataset):
+
+        model_path = './model/model_lenet4_mnist.h5'
+        sub_model_dir = './submodels_dissector/'
+        m = load_model(model_path)
+        test_preds = m.predict_classes(x_test)
+        sub_models = os.listdir(sub_model_dir)
+        scores = {}
+
+        for i, m in enumerate(sub_models):
+            sv_scores = []
+            s_model = load_model('./submodels_dissector/' + m)
+
+            activations = s_model.predict(x_test)
+            preds = s_model.predict_classes(x_test)
+
+            for i, p in enumerate(preds):
+
+                if np.argmax(activations[i]) == test_preds[i]:
+
+                    i_x = np.max(activations[i])
+                    i_sh = np.sort(activations[i])[::-1][1]
+
+                    sv_score = i_x / (i_x + i_sh)
+
+                else:
+                    i_h = np.max(activations[i])
+                    i_x = activations[i][test_preds[i]]
+
+                    sv_score = 1 - i_h / (i_h + i_x)
+
+                sv_scores.append(sv_score)
+
+            scores[m] = sv_scores
+
+        return scores
+
+    def get_weights(self, growth_type: str, alpha: float):
+
+        sub_models = os.listdir('./submodels_dissector/')
+        weights = {}
+
+        assert growth_type in ['linear', 'logarithmic', 'exponential'], "Invalid weight growth type"
+        for m in sub_models:
+            l_number = int(m.split("_")[1]) + 1
+
+            if growth_type == 'linear':
+
+                y = alpha * l_number + 1
+
+            elif growth_type == 'logarithmic':
+
+                y = alpha * np.log(l_number) + 1
+
+            else:
+
+                y = np.exp(alpha * l_number)
+
+            weights[m] = y
+
+        return weights
+
+    def pv_scores(self, weights: {}, scores: {}):
+
+        pv_scores = np.zeros(shape=(10000,))
+        for sub_model, sv in scores.items():
+            weighted_score = weights[sub_model] * np.array(sv)
+            pv_scores += weighted_score
+
+        pv_scores = pv_scores / sum(weights.values())
+
+        return pv_scores
 
 
