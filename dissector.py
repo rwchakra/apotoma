@@ -47,18 +47,21 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import ZeroPadding2D, Dense, Flatten
 import os
+from tqdm import tqdm
 
 class Dissector():
 
-    def __init__(self, model: tf.keras.Model, args: {}):
+    def __init__(self, model: tf.keras.Model, model_path: str, sub_model_path: str):
 
         self.model = model
-        self.args = args
+        self.model_path = model_path
+        self.sub_model_path = sub_model_path
 
-    def generate_ground_truth(self, model: tf.keras.Model , x_test: tf.data.Dataset, y_test: tf.data.Dataset):
+
+    def generate_ground_truth(self, x_test: tf.data.Dataset, y_test: tf.data.Dataset):
 
         #model = load_model(self.args['model_path'])
-        test_preds = model.predict_classes(x_test)
+        test_preds = self.model.predict_classes(x_test)
         labels = np.argmax(y_test, axis=1)
         corr = np.where(test_preds == labels)
         incorr = np.where(test_preds != labels)
@@ -67,11 +70,11 @@ class Dissector():
 
         return test_preds, labels
 
-    def generate_sub_models(self, layer_list: [], model: tf.keras.Model):
+    def generate_sub_models(self, layer_list: []):
 
-        for i, l in enumerate(layer_list):
+        for _, l in enumerate(layer_list):
             n_model = Sequential()
-            for layer in model.layers[0:l]:
+            for layer in self.model.layers[0:l]:
                 n_model.add(layer)
 
             n_model.add(Flatten())
@@ -80,41 +83,38 @@ class Dissector():
 
             n_model.add(Dense(10, activation='softmax'))
             n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-            n_model.save("./submodels_dissector/model/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
-            print("Submodels generated for required layers: {}".format(layer_list))
+            n_model.save(self.sub_model_path+"submodel_{}_lenet4_{}.h5".format(l, 'mnist'))
 
-    def train_sub_models(self, submodel_path: str, x_train: tf.data.Dataset, y_train: tf.data.Dataset, epochs: int):
+    def train_sub_models(self, x_train: tf.data.Dataset, y_train: tf.data.Dataset, epochs: int):
 
-        sub_models = os.listdir(submodel_path)
 
-        for i, m in enumerate(sub_models):
-            s_model = load_model(m)
+        sub_models = os.listdir(self.sub_model_path)
+
+        for i, m in enumerate(tqdm(sub_models)):
+            s_model = load_model(self.sub_model_path+m)
             s_model.fit(
                 x_train,
                 y_train,
                 epochs=epochs,
                 batch_size=128,
                 shuffle=True,
-                verbose=1,
+                verbose=0,
                 validation_split=0.2,
             )
 
-            s_model.save("./submodels_dissector/model/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
-            print("Stored trained submodels_dissector on the same directory")
+            s_model.save(self.sub_model_path+m)
 
 
     def sv_score(self, x_test: tf.data.Dataset):
 
-        model_path = './model/model_lenet4_mnist.h5'
-        sub_model_dir = './submodels_dissector/'
-        m = load_model(model_path)
+        m = load_model(self.model_path)
         test_preds = m.predict_classes(x_test)
-        sub_models = os.listdir(sub_model_dir)
+        sub_models = os.listdir(self.sub_model_path)
         scores = {}
 
         for i, m in enumerate(sub_models):
             sv_scores = []
-            s_model = load_model('./submodels_dissector/' + m)
+            s_model = load_model(self.sub_model_path + m)
 
             activations = s_model.predict(x_test)
             preds = s_model.predict_classes(x_test)
@@ -142,7 +142,7 @@ class Dissector():
 
     def get_weights(self, growth_type: str, alpha: float):
 
-        sub_models = os.listdir('./submodels_dissector/')
+        sub_models = os.listdir(self.sub_model_path)
         weights = {}
 
         assert growth_type in ['linear', 'logarithmic', 'exponential'], "Invalid weight growth type"
@@ -175,5 +175,4 @@ class Dissector():
         pv_scores = pv_scores / sum(weights.values())
 
         return pv_scores
-
 
