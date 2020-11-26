@@ -8,3 +8,5 @@
 /scripts/examples_build/
 /examples_build/
 /docs/_build/
+
+/apotoma.egg-info/

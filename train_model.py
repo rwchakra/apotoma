@@ -8,6 +8,7 @@ from tensorflow.keras.datasets import mnist, cifar10
 from tensorflow.keras import utils
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D, ZeroPadding2D, AveragePooling2D
+
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import Callback
 
@@ -98,8 +99,7 @@ class MNISTModel():
 
         print(model.summary())
         model.compile(
-            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
-        )
+            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
         model.fit(
             x_train,
@@ -112,6 +112,7 @@ class MNISTModel():
         )
 
         model.save("./model/model_{}.h5".format(args.d))
+
 
 
 class LeNet4():
@@ -165,16 +166,15 @@ class LeNet4():
         model.save("./model/model_lenet4_{}.h5".format(args.d))
 
 
-
-
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", required=True, type=str)
     args = parser.parse_args()
     assert args.d in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
 
+
     #model = MNISTModel(args)
     model = LeNet4(args)
+    #model = MNISTModel(args)
+
     model.train()
