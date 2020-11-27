@@ -78,6 +78,19 @@ class Dissector():
 
     def generate_sub_models(self, layer_list: []):
 
+        """Two options below: Either a sequential (for list of ints) or a functional (list of strs)"""
+
+        """for i, l_name in enumerate(l_names):
+            mid = self.model.get_layer(l_name).output
+            flat = Flatten()(mid)
+            final = Dense(10, activation='softmax')(flat)
+            n_model = Model(self.model.input, final)
+            for l in n_model.layers[:-1]:
+                l.trainable = False
+
+            n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+            n_model.save("./submodels_dissector/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))"""
+
         for _, l in enumerate(layer_list):
             n_model = Sequential()
             for layer in self.model.layers[0:l]:

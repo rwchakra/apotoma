@@ -142,12 +142,12 @@ class LeNet4():
 
 
         model = Sequential()
-        model.add(Conv2D(4, (5, 5), activation='relu', input_shape=x_train.shape[1:]))
+        model.add(Conv2D(4, (5, 5), activation='relu', input_shape=x_train.shape[1:], name='conv_1'))
         model.add(AveragePooling2D())
-        model.add(Conv2D(16, (5, 5), activation='relu'))
+        model.add(Conv2D(16, (5, 5), activation='relu', name='conv_2'))
         model.add(AveragePooling2D())
         model.add(Flatten())
-        model.add(Dense(120, activation='relu'))
+        model.add(Dense(120, activation='relu', name='dense_1'))
         model.add(Dense(10, activation='softmax'))
 
         print(model.summary())
