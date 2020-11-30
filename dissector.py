@@ -79,17 +79,18 @@ class Dissector():
     def generate_sub_models(self, layer_list: []):
 
         """Two options below: Either a sequential (for list of ints) or a functional (list of strs)"""
+        #TODO Config for save path and model type
 
-        """for i, l_name in enumerate(l_names):
-            mid = self.model.get_layer(l_name).output
-            flat = Flatten()(mid)
-            final = Dense(10, activation='softmax')(flat)
-            n_model = Model(self.model.input, final)
-            for l in n_model.layers[:-1]:
-                l.trainable = False
-
-            n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-            n_model.save("./submodels_dissector/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))"""
+        # for i, l_name in enumerate(l_names):
+        #     mid = self.model.get_layer(l_name).output
+        #     flat = Flatten()(mid)
+        #     final = Dense(10, activation='softmax')(flat)
+        #     n_model = Model(self.model.input, final)
+        #     for l in n_model.layers[:-1]:
+        #         l.trainable = False
+        #
+        #     n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        #     n_model.save("./submodels_dissector/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
 
         for _, l in enumerate(layer_list):
             n_model = Sequential()
@@ -165,7 +166,7 @@ class Dissector():
 
         sub_models = os.listdir(self.sub_model_path)
         print(sub_models)
-        weights = np.empty(shape=(len(sub_models), 1))
+        weights = np.empty(shape=(len(sub_models), ))
 
         assert growth_type in ['linear', 'logarithmic', 'exponential'], "Invalid weight growth type"
         for i, m in enumerate(sub_models):
@@ -189,7 +190,7 @@ class Dissector():
 
     def pv_scores(self, weights: np.ndarray, scores: np.ndarray):
 
-        pv_scores = np.sum(np.multiply(scores, weights), axis=0) / sum(weights)[0]
+        pv_scores = np.sum(np.multiply(scores, weights[:, np.newaxis]), axis=0) / np.sum(weights)
 
         return pv_scores
 
