@@ -45,7 +45,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         ats, pred = sa._calculate_ats()
 
         # Here you load the values from kims implementation
-        kim_ats = np.load('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/tmp/mnist_train_activation_3_ats.npy')
+        kim_ats = np.load('/test_integration/assets/mnist_train_activation_3_ats.npy')
         kim_pred = np.load('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/tmp/mnist_train_pred.npy.npy')
 
         self.assertIsInstance(ats, np.ndarray)
