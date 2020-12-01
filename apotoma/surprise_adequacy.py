@@ -219,42 +219,51 @@ class LSA(SurpriseAdequacy):
 
         if self.args['is_classification']:
 
-            for label in range(self.args['num_classes']):
-                # Shape of (num_activation nodes x num_examples_by_label)
-                row_vectors = np.transpose(self.train_ats[self.class_matrix[label]])
-                positions = np.where(np.var(row_vectors) < self.args['var_threshold'])[0]
-
-                for p in positions:
-                    removed_rows.append(p)
-
-            removed_rows = list(set(removed_rows))
-
-            kdes = {}
-            for label in tqdm(range(self.args['num_classes']), desc="kde"):
-
-                refined_ats = np.transpose(self.train_ats[self.class_matrix[label]])
-                refined_ats = np.delete(refined_ats, removed_rows, axis=0)
-
-                if refined_ats.shape[0] == 0:
-                    print(
-                        "Ats were removed by threshold {}".format(self.args['var_threshold'])
-                    )
-                    break
-                kdes[label] = gaussian_kde(refined_ats)
+            kdes, removed_rows = self._classification_kdes(removed_rows)
 
         else:
-            row_vectors = np.transpose(self.train_ats)
-            for activation_node in range(row_vectors.shape[0]):
-                if np.var(row_vectors[activation_node]) < self.args['var_threshold']:
-                    removed_rows.append(activation_node)
-
-            refined_ats = np.transpose(self.train_ats)
-            refined_ats = np.delete(refined_ats, removed_rows, axis=0)
-            if refined_ats.shape[0] == 0:
-                print("Ats were removed by threshold {}".format(self.args['var_threshold']))
-            kdes = [gaussian_kde(refined_ats)]
+            kdes = self._non_classification_kdes(removed_rows)
 
         print("The number of removed columns: {}".format(len(removed_rows)))
+
+        return kdes, removed_rows
+
+    def _non_classification_kdes(self, removed_rows):
+
+        row_vectors = np.transpose(self.train_ats)
+        for activation_node in range(row_vectors.shape[0]):
+            if np.var(row_vectors[activation_node]) < self.args['var_threshold']:
+                removed_rows.append(activation_node)
+        refined_ats = np.transpose(self.train_ats)
+        refined_ats = np.delete(refined_ats, removed_rows, axis=0)
+        if refined_ats.shape[0] == 0:
+            print("Ats were removed by threshold {}".format(self.args['var_threshold']))
+        kdes = [gaussian_kde(refined_ats)]
+        return kdes
+
+    def _classification_kdes(self, removed_rows):
+
+        for label in range(self.args['num_classes']):
+            # Shape of (num_activation nodes x num_examples_by_label)
+            row_vectors = np.transpose(self.train_ats[self.class_matrix[label]])
+            positions = np.where(np.var(row_vectors) < self.args['var_threshold'])[0]
+
+            for p in positions:
+                removed_rows.append(p)
+        removed_rows = list(set(removed_rows))
+
+        kdes = {}
+        for label in tqdm(range(self.args['num_classes']), desc="kde"):
+
+            refined_ats = np.transpose(self.train_ats[self.class_matrix[label]])
+            refined_ats = np.delete(refined_ats, removed_rows, axis=0)
+
+            if refined_ats.shape[0] == 0:
+                print(
+                    "Ats were removed by threshold {}".format(self.args['var_threshold'])
+                )
+                break
+            kdes[label] = gaussian_kde(refined_ats)
 
         return kdes, removed_rows
 
@@ -271,7 +280,7 @@ class LSA(SurpriseAdequacy):
                     kdes: Dict of scipy kde objects
 
                 Returns:
-                    lsa (float): The scalar LSA value
+                    lsa (float): List of scalar LSA values
 
         """
 
@@ -321,7 +330,7 @@ class DSA(SurpriseAdequacy):
                 target_pred (ndarray): 1-D Array of predicted labels
 
             Returns:
-                dsa (float): The scalar LSA value
+                dsa (float): List of scalar DSA values
 
         """
 
@@ -347,19 +356,7 @@ class DSA(SurpriseAdequacy):
 
                 matches = np.where(batch == label)
                 if len(matches) > 0:
-                    target_matches = target_ats[matches[0] + start]
-                    train_matches_sameClass = self.train_ats[self.class_matrix[label]]
-                    a_dist = target_matches[:, None] - train_matches_sameClass
-                    a_dist_norms = np.linalg.norm(a_dist, axis=2)
-                    a_min_dist = np.min(a_dist_norms, axis=1)
-                    closest_position = np.argmin(a_dist_norms, axis=1)
-                    closest_ats = train_matches_sameClass[closest_position]
-
-                    train_matches_otherClasses = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
-                    b_dist = closest_ats[:, None] - train_matches_otherClasses
-                    b_dist_norms = np.linalg.norm(b_dist, axis=2)
-                    b_min_dist = np.min(b_dist_norms, axis=1)
-
+                    a_min_dist, b_min_dist = self._dsa_distances(all_idx, dsa, label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
 
                 else:
@@ -368,3 +365,19 @@ class DSA(SurpriseAdequacy):
             start += batch_size
 
         return dsa
+
+    def _dsa_distances(self, all_idx, dsa, label, matches, start, target_ats):
+
+        target_matches = target_ats[matches[0] + start]
+        train_matches_sameClass = self.train_ats[self.class_matrix[label]]
+        a_dist = target_matches[:, None] - train_matches_sameClass
+        a_dist_norms = np.linalg.norm(a_dist, axis=2)
+        a_min_dist = np.min(a_dist_norms, axis=1)
+        closest_position = np.argmin(a_dist_norms, axis=1)
+        closest_ats = train_matches_sameClass[closest_position]
+        train_matches_otherClasses = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        b_dist = closest_ats[:, None] - train_matches_otherClasses
+        b_dist_norms = np.linalg.norm(b_dist, axis=2)
+        b_min_dist = np.min(b_dist_norms, axis=1)
+
+        return a_min_dist, b_min_dist
