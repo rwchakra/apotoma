@@ -141,23 +141,31 @@ class Dissector:
             for i, p in enumerate(preds):
 
                 if np.argmax(activations[i]) == test_preds[i]:
-
-                    i_x = np.max(activations[i])
-                    i_sh = np.sort(activations[i])[::-1][1]
-
-                    sv_score = i_x / (i_x + i_sh)
-
+                    sv_score = self._calc_sv_for_match(activations, i)
                 else:
-                    i_h = np.max(activations[i])
-                    i_x = activations[i][test_preds[i]]
-
-                    sv_score = 1 - i_h / (i_h + i_x)
+                    sv_score = self._calc_sv_for_non_match(activations, i, test_preds)
 
                 sv_scores.append(sv_score)
 
             scores[index] = np.array(sv_scores)
 
         return scores
+
+    @staticmethod
+    # TODO Rwiddhi Test this
+    def _calc_sv_for_non_match(activations, i, test_preds):
+        i_h = np.max(activations[i])
+        i_x = activations[i][test_preds[i]]
+        sv_score = 1 - i_h / (i_h + i_x)
+        return sv_score
+
+    @staticmethod
+    # TODO Rwiddhi Test this
+    def _calc_sv_for_match(activations, i):
+        i_x = np.max(activations[i])
+        i_sh = np.sort(activations[i])[::-1][1]
+        sv_score = i_x / (i_x + i_sh)
+        return sv_score
 
     def get_weights(self, growth_type: str, alpha: float):
 
@@ -185,6 +193,7 @@ class Dissector:
 
         return weights
 
+    # TODO Rwiddhi Test this
     def pv_scores(self, weights: np.ndarray, scores: np.ndarray):
 
         pv_scores = np.sum(np.multiply(scores, weights[:, np.newaxis]), axis=0) / np.sum(weights)

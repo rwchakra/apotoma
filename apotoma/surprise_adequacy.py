@@ -40,7 +40,7 @@ class SurpriseAdequacy(NoveltyScore):
         )
 
     # Returns ats and returns predictions
-    def _calculate_ats(self, dataset: tf.data.Dataset, ds_name: str, use_cache: bool) -> Tuple[np.ndarray, np.ndarray]:
+    def _load_or_calculate_ats(self, dataset: tf.data.Dataset, ds_name: str, use_cache: bool) -> Tuple[np.ndarray, np.ndarray]:
 
         """Determine activation traces train, target, and test datasets
 
@@ -58,56 +58,9 @@ class SurpriseAdequacy(NoveltyScore):
 
         saved_target_path = self._get_saved_path(ds_name)
         if os.path.exists(saved_target_path[0]) and use_cache:
-            print("Found saved {} ATs, skip serving".format(ds_name))
-            # In case train_ats is stored in a disk
-            ats = np.load(saved_target_path[0])
-            pred = np.load(saved_target_path[1])
-            return ats, pred
-
+            return self._load_ats(ds_name, saved_target_path)
         else:
-            temp_model = Model(
-                inputs=self.model.input,
-                outputs=[self.model.get_layer(layer_name).output for layer_name in self.args['layer_names']]
-            )
-
-            if self.args['is_classification']:
-                #p = Pool(num_proc)
-                print("["+ds_name+"]"+" Model serving")
-                # Shape of len(ds_name_pred): predictions for the ds_name set
-
-                pred = self.model.predict_classes(dataset, batch_size=self.args['batch_size'], verbose=1)
-                if len(self.args['layer_names']) == 1:
-                    # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
-                    layer_outputs = [
-                        temp_model.predict(dataset, batch_size=self.args['batch_size'], verbose=1)
-                    ]
-
-                else:
-                    layer_outputs = temp_model.predict(
-                        dataset, batch_size=self.args['batch_size'], verbose=1
-                    )
-
-                print("Processing "+ds_name+" ATs")
-                ats = None
-                for layer_name, layer_output in zip(self.args['layer_names'], layer_outputs):
-                    print("Layer: " + layer_name)
-                    if layer_output[0].ndim == 3:
-                        # For convolutional layers
-                        layer_matrix = np.array(
-                            map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])], [layer_output[i] for i in range(len(dataset))])
-                        )
-                    else:
-                        layer_matrix = np.array(layer_output)
-
-                    if ats is None:
-                        # Initially ats is None, so ats is 60,000 * 10
-                        ats = layer_matrix
-                    else:
-                        ats = np.append(ats, layer_matrix, axis=1)
-                        layer_matrix = None
-
-
-            #saved_path = self._get_saved_path(ds_name)
+            ats, pred = self._calculate_ats(dataset, ds_name)
 
             if saved_target_path is not None:
                 np.save(saved_target_path[0], ats)
@@ -116,6 +69,56 @@ class SurpriseAdequacy(NoveltyScore):
 
             return ats, pred
 
+    def _calculate_ats(self, dataset, ds_name):
+        temp_model = Model(
+            inputs=self.model.input,
+            outputs=[self.model.get_layer(layer_name).output for layer_name in self.args['layer_names']]
+        )
+
+        if self.args['is_classification']:
+            # p = Pool(num_proc)
+            print("[" + ds_name + "]" + " Model serving")
+            # Shape of len(ds_name_pred): predictions for the ds_name set
+            pred = self.model.predict_classes(dataset, batch_size=self.args['batch_size'], verbose=1)
+            if len(self.args['layer_names']) == 1:
+                # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
+                layer_outputs = [
+                    temp_model.predict(dataset, batch_size=self.args['batch_size'], verbose=1)
+                ]
+
+            else:
+                layer_outputs = temp_model.predict(
+                    dataset, batch_size=self.args['batch_size'], verbose=1
+                )
+
+            print("Processing " + ds_name + " ATs")
+            ats = None
+            for layer_name, layer_output in zip(self.args['layer_names'], layer_outputs):
+                print("Layer: " + layer_name)
+                if layer_output[0].ndim == 3:
+                    # For convolutional layers
+                    layer_matrix = np.array(
+                        map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
+                            [layer_output[i] for i in range(len(dataset))])
+                    )
+                else:
+                    layer_matrix = np.array(layer_output)
+
+                if ats is None:
+                    # Initially ats is None, so ats is 60,000 * 10
+                    ats = layer_matrix
+                else:
+                    ats = np.append(ats, layer_matrix, axis=1)
+                    layer_matrix = None
+
+        return ats, pred
+
+    def _load_ats(self, ds_name, saved_target_path):
+        print("Found saved {} ATs, skip serving".format(ds_name))
+        # In case train_ats is stored in a disk
+        ats = np.load(saved_target_path[0])
+        pred = np.load(saved_target_path[1])
+        return ats, pred
 
     def _load_or_calc_train_ats(self, use_cache = False):
 
@@ -137,7 +140,7 @@ class SurpriseAdequacy(NoveltyScore):
             self.train_ats, self.train_pred = np.load(saved_train_path[0]), np.load(saved_train_path[1])
 
         else:
-            self.train_ats, self.train_pred = self._calculate_ats(dataset=self.train_data, ds_name="train", use_cache=use_cache)
+            self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_name="train", use_cache=use_cache)
 
     def prep(self):
 
@@ -191,7 +194,7 @@ class LSA(SurpriseAdequacy):
                             lsa (float): The scalar LSA value
 
         """
-        target_ats, target_pred = self._calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
 
         kdes, removed_rows = self._calc_kdes()
         return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_name)
@@ -304,7 +307,7 @@ class DSA(SurpriseAdequacy):
                             dsa (float): The scalar DSA value
 
         """
-        target_ats, target_pred = self._calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
         return self._calc_dsa(target_ats, target_pred, ds_name)
 
     def _calc_dsa(self, target_ats, target_pred, ds_name):
