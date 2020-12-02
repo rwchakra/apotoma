@@ -7,18 +7,20 @@ import unittest
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import load_model
 
-import apotoma
 from apotoma.surprise_adequacy import DSA
 from apotoma.surprise_adequacy import LSA
-from tensorflow.keras.models import load_model
-from tensorflow.keras.datasets import mnist
 
 
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.model: tf.keras.Model = load_model('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_mnist.h5')
+        # TODO @Rwiddhi. Move the h5 file to the assets folder
+        #   and use a relative path to refer to it (tests/asset/model_mnist.h5)
+        self.model: tf.keras.Model = load_model(
+            '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
         self.train_data = self.train_data.reshape(-1, 28, 28, 1)
         self.test_data = self.test_data.reshape(-1, 28, 28, 1)
@@ -38,14 +40,15 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
                 'n_bucket': 1000, 'num_classes': 10,
                 'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
 
-
         # HERE you'll calculate the ats on your code
         nodes = 10
         sa = DSA(self.model, datasplit_train, args)
         ats, pred = sa._calculate_ats()
 
         # Here you load the values from kims implementation
-        kim_ats = np.load('/test_integration/assets/mnist_train_activation_3_ats.npy')
+        kim_ats = np.load('/tests/assets/mnist_train_activation_3_ats.npy')
+        # TODO @Rwiddhi. Move the file to the assets folder
+        #   and use a relative path to refer to it (tests/asset/...)
         kim_pred = np.load('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/tmp/mnist_train_pred.npy.npy')
 
         self.assertIsInstance(ats, np.ndarray)
@@ -58,9 +61,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
-
     def test_dsa_is_consistent_with_original_implementation(self):
-
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
@@ -76,9 +77,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_almost_equal(actual=test_dsa,
                                        desired=original_dsa, decimal=5)
 
-
     def test_lsa_is_consistent_with_original_implementation(self):
-
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
@@ -94,7 +93,6 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
                                        desired=original_lsa, decimal=5)
 
     def test_lsa_kdes(self):
-
         nodes = 10
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
@@ -110,12 +108,3 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertIsInstance(test_rm_rows, list)
         self.assertEqual(len(test_kdes), nodes)
         self.assertEqual(np.array(test_rm_rows).dtype, int)
-
-
-
-
-
-
-
-
-

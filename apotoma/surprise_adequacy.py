@@ -1,15 +1,17 @@
-from typing import Tuple, Dict, List
+import os
+from abc import ABC
+from typing import Tuple, List
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from apotoma.novelty_score import NoveltyScore
 from scipy.stats import gaussian_kde
+from tensorflow.keras.models import Model
 from tqdm import tqdm
-import os
+
+from apotoma.novelty_score import NoveltyScore
 
 
-class SurpriseAdequacy(NoveltyScore):
+class SurpriseAdequacy(NoveltyScore, ABC):
 
     def __init__(self, model: tf.keras.Model, train_data: tf.data.Dataset, args: {}) -> None:
         super().__init__(model, train_data, args)
@@ -40,7 +42,8 @@ class SurpriseAdequacy(NoveltyScore):
         )
 
     # Returns ats and returns predictions
-    def _load_or_calculate_ats(self, dataset: tf.data.Dataset, ds_name: str, use_cache: bool) -> Tuple[np.ndarray, np.ndarray]:
+    def _load_or_calculate_ats(self, dataset: tf.data.Dataset, ds_name: str, use_cache: bool) -> Tuple[
+        np.ndarray, np.ndarray]:
 
         """Determine activation traces train, target, and test datasets
 
@@ -58,14 +61,14 @@ class SurpriseAdequacy(NoveltyScore):
 
         saved_target_path = self._get_saved_path(ds_name)
         if os.path.exists(saved_target_path[0]) and use_cache:
-            return self._load_ats(ds_name, saved_target_path)
+            return self._load_ats(ds_name)
         else:
             ats, pred = self._calculate_ats(dataset, ds_name)
 
             if saved_target_path is not None:
                 np.save(saved_target_path[0], ats)
                 np.save(saved_target_path[1], pred)
-                print("Cached the ["+ds_name+"]"+" ats and predictions")
+                print("Cached the [" + ds_name + "]" + " ats and predictions")
 
             return ats, pred
 
@@ -113,15 +116,15 @@ class SurpriseAdequacy(NoveltyScore):
 
         return ats, pred
 
-    def _load_ats(self, ds_name, saved_target_path):
+    def _load_ats(self, ds_name):
         print("Found saved {} ATs, skip serving".format(ds_name))
         # In case train_ats is stored in a disk
+        saved_target_path = self._get_saved_path(ds_name)
         ats = np.load(saved_target_path[0])
         pred = np.load(saved_target_path[1])
         return ats, pred
 
-    def _load_or_calc_train_ats(self, use_cache = False):
-
+    def _load_or_calc_train_ats(self, use_cache=False):
         """Load or get actviation traces of training inputs
 
                         Args:
@@ -140,10 +143,10 @@ class SurpriseAdequacy(NoveltyScore):
             self.train_ats, self.train_pred = np.load(saved_train_path[0]), np.load(saved_train_path[1])
 
         else:
-            self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_name="train", use_cache=use_cache)
+            self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_name="train",
+                                                                          use_cache=use_cache)
 
     def prep(self):
-
         """
 
         Prepare class matrix from training activation traces. Class matrix is a dictionary
@@ -163,7 +166,6 @@ class SurpriseAdequacy(NoveltyScore):
             self.class_matrix[label].append(i)
 
     def clear_cache(self, saved_path: str):
-
         """
 
             Delete files of activation traces.
@@ -180,8 +182,7 @@ class SurpriseAdequacy(NoveltyScore):
 
 class LSA(SurpriseAdequacy):
 
-    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache = False):
-
+    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache=False):
         """
         Return LSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -194,13 +195,12 @@ class LSA(SurpriseAdequacy):
                             lsa (float): The scalar LSA value
 
         """
-        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache=use_cache)
 
         kdes, removed_rows = self._calc_kdes()
         return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_name)
 
     def _calc_kdes(self) -> Tuple[List[object], List[int]]:
-
         """
             Determine Gaussian KDE for each label and list of removed rows based on variance threshold, if any.
 
@@ -301,9 +301,10 @@ class LSA(SurpriseAdequacy):
 
         return lsa
 
+
 class DSA(SurpriseAdequacy):
 
-    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache = False):
+    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache=False):
         """
         Return DSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -316,7 +317,7 @@ class DSA(SurpriseAdequacy):
                             dsa (float): The scalar DSA value
 
         """
-        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache = use_cache)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache=use_cache)
         return self._calc_dsa(target_ats, target_pred, ds_name)
 
     def _calc_dsa(self, target_ats, target_pred, ds_name):
@@ -333,7 +334,6 @@ class DSA(SurpriseAdequacy):
                 dsa (float): List of scalar DSA values
 
         """
-
 
         dsa = np.empty(shape=target_pred.shape[0])
         batch_size = 500
