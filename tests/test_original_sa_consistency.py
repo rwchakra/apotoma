@@ -34,6 +34,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
     def test_train_ats_calculation_against_kims_implementation(self):
         datasplit_train, datasplit_test = self.train_data[0:100], self.test_data[0:100]
 
+        # TODO @Rwiddhi. Create instance of new config class instead of args
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
@@ -62,6 +63,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_equal(pred, kim_pred)
 
     def test_dsa_is_consistent_with_original_implementation(self):
+        # TODO @Rwiddhi. Create instance of new config class instead of args
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
@@ -78,6 +80,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
                                        desired=original_dsa, decimal=5)
 
     def test_lsa_is_consistent_with_original_implementation(self):
+        # TODO @Rwiddhi. Create instance of new config class instead of args
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
@@ -94,6 +97,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def test_lsa_kdes(self):
         nodes = 10
+        # TODO @Rwiddhi. Create instance of new config class instead of args
         args = {'d': 'mnist', 'is_classification': True,
                 'dsa': True, 'lsa': False, 'batch_size': 128,
                 'var_threshold': 1e-5, 'upper_bound': 2000,
