@@ -49,17 +49,15 @@ from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.models import load_model
 from tqdm import tqdm
+import argparse
 
 
 class Dissector:
 
-    def __init__(self, model: tf.keras.Model, model_path: str, sub_model_path: str, num_classes: int, opt={}):
+    def __init__(self, model: tf.keras.Model, config: argparse.Namespace):
 
         self.model = model
-        self.model_path = model_path
-        self.sub_model_path = sub_model_path
-        self.num_classes = num_classes
-        self.opt = opt
+        self.config = config
 
     def generate_ground_truth(self, x_test: tf.data.Dataset, y_test: tf.data.Dataset):
 
@@ -78,7 +76,6 @@ class Dissector:
     def generate_sub_models(self, layer_list: []):
 
         """Two options below: Either a sequential (for list of ints) or a functional (list of strs)"""
-        # TODO Config for save path and model type
 
         # for i, l_name in enumerate(l_names):
         #     mid = self.model.get_layer(l_name).output
@@ -88,8 +85,8 @@ class Dissector:
         #     for l in n_model.layers[:-1]:
         #         l.trainable = False
         #
-        #     n_model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        #     n_model.save("./submodels_dissector/submodel_{}_lenet4_{}.h5".format(i, 'mnist'))
+        #     n_model.compile(loss=self.config.loss, optimizer=self.config.optimizer, metrics=self.config.metrics)
+        #     n_model.save(self.config.sub_model_path + "submodel_"+self.config.model_type+"_{}.h5".format(l, self.config.dataset_name))
 
         for _, l in enumerate(layer_list):
             n_model = Sequential()
@@ -100,16 +97,16 @@ class Dissector:
             for layer in n_model.layers:
                 layer.trainable = False
 
-            n_model.add(Dense(self.num_classes, activation='softmax'))
-            n_model.compile(loss=self.opt['loss'], optimizer=self.opt['optimizer'], metrics=self.opt['metrics'])
-            n_model.save(self.sub_model_path + "submodel_{}_lenet4_{}.h5".format(l, 'mnist'))
+            n_model.add(Dense(self.config.num_classes, activation='softmax'))
+            n_model.compile(loss=self.config.loss, optimizer=self.config.optimizer, metrics=self.config.metrics)
+            n_model.save(self.config.sub_model_path + "submodel_"+self.config.model_type+"_{}.h5".format(l, self.config.dataset_name))
 
     def train_sub_models(self, x_train: tf.data.Dataset, y_train: tf.data.Dataset, epochs: int):
 
-        sub_models = os.listdir(self.sub_model_path)
+        sub_models = os.listdir(self.config.sub_model_path)
 
         for i, m in enumerate(tqdm(sub_models)):
-            s_model = load_model(self.sub_model_path + m)
+            s_model = load_model(self.config.sub_model_path + m)
             s_model.fit(
                 x_train,
                 y_train,
@@ -117,23 +114,23 @@ class Dissector:
                 batch_size=128,
                 shuffle=True,
                 verbose=0,
-                validation_split=self.opt['val_split'],
+                validation_split=self.config.val_split,
             )
 
-            s_model.save(self.sub_model_path + m)
+            s_model.save(self.config.sub_model_path + m)
 
     def sv_score(self, x_test: tf.data.Dataset):
         """Check out 'Prediction confidence score (PCS)' - michael will give you reference for msc thesis"""
 
-        m = load_model(self.model_path)
+        m = load_model(self.config.model_path)
         test_preds = np.argmax(m.predict(x_test), axis=1)
-        sub_models = os.listdir(self.sub_model_path)
+        sub_models = os.listdir(self.config.sub_model_path)
         print(sub_models)
         scores = np.empty(shape=(len(sub_models), (x_test.shape[0])))
 
         for index, m in enumerate(sub_models):
             sv_scores = []
-            s_model = load_model(self.sub_model_path + m)
+            s_model = load_model(self.config.sub_model_path + m)
 
             activations = s_model.predict(x_test)
             preds = np.argmax(activations, axis=1)
@@ -152,7 +149,7 @@ class Dissector:
         return scores
 
     @staticmethod
-    # TODO Rwiddhi Test this
+
     def _calc_sv_for_non_match(activations, i, test_preds):
         i_h = np.max(activations[i])
         i_x = activations[i][test_preds[i]]
@@ -160,7 +157,7 @@ class Dissector:
         return sv_score
 
     @staticmethod
-    # TODO Rwiddhi Test this
+
     def _calc_sv_for_match(activations, i):
         i_x = np.max(activations[i])
         i_sh = np.sort(activations[i])[::-1][1]
@@ -169,7 +166,7 @@ class Dissector:
 
     def get_weights(self, growth_type: str, alpha: float):
 
-        sub_models = os.listdir(self.sub_model_path)
+        sub_models = os.listdir(self.config.sub_model_path)
         print(sub_models)
         weights = np.empty(shape=(len(sub_models),))
 
@@ -193,7 +190,7 @@ class Dissector:
 
         return weights
 
-    # TODO Rwiddhi Test this
+
     def pv_scores(self, weights: np.ndarray, scores: np.ndarray):
 
         pv_scores = np.sum(np.multiply(scores, weights[:, np.newaxis]), axis=0) / np.sum(weights)

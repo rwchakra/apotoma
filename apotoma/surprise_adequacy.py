@@ -8,6 +8,8 @@ import tensorflow as tf
 from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
+import sys
+import argparse
 
 from apotoma.novelty_score import NoveltyScore
 
@@ -23,8 +25,14 @@ class SurpriseAdequacyConfig:
         is_classification (bool): A boolean indicating if the NN under test solves a classification problem.
         num_classes (None, int): The number of classes (for classification problems)
         or None (for regression problems). Default: None
-        # TODO @Rwiddhi document other fields similar to the two examples I made above
-            Make sure to order them in the same order as they are listed below
+
+        layer_names (List(str)): List of layer names whose ATs are to be extracted. Code takes last layer.
+        saved_path (str): Path to store and load ATs
+        dataset_name (str): Dataset to be used. Currently supports mnist and cifar-10.
+        num_classes (int): No. of classes in classification. Default is 10.
+        min_var_threshold (float): Threshold value to check variance of ATs
+        batch_size (int): Batch size to use while predicting.
+
      Raises:
         ValueError: If any of the config parameters takes and illegal value.
     """
@@ -32,12 +40,10 @@ class SurpriseAdequacyConfig:
     is_classification: bool
     layer_names: List[str]
     saved_path: str
-    # TODO @Rwiddhi Whatever d is, we need a better name for it.
-    d: None
-    num_classes: Union[int, None] = None
-    # TODO @Rwiddhi Please add the same default values as in the kim paper here
-    min_var_threshold: float = 0.1
-    batch_size: int = 32
+    dataset_name: str
+    num_classes: int = 10
+    min_var_threshold: float = 1e-5
+    batch_size: int = 128
 
     def __post_init__(self):
         if self.is_classification and not self.num_classes:
@@ -48,14 +54,16 @@ class SurpriseAdequacyConfig:
                              "in SurpriseAdequacyConfig for classification problems")
         elif self.num_classes < 0:
             raise ValueError(f"num_classes must be positive but was {self.num_classes}) ")
+        elif self.min_var_threshold < 0:
+            raise ValueError(f"Variance threshold cannot be negative")
 
-        # TODO @Rwiddhi add checks like these (where applicable) for all config params,
-        #   e.g. make sure that min_var_threshold is not negative,
+        elif self.dataset_name not in ['mnist', 'cifar-10']:
+            raise ValueError(f"Only Mnist and cifar-10 supported currently")
 
 
 class SurpriseAdequacy(NoveltyScore, ABC):
 
-    def __init__(self, model: tf.keras.Model, train_data: tf.data.Dataset, config: SurpriseAdequacyConfig) -> None:
+    def __init__(self, model: tf.keras.Model, train_data: tf.data.Dataset, config: argparse.Namespace) -> None:
         super().__init__(model, train_data)
         self.train_ats, self.train_pred, self.class_matrix = None, None, {}
         self.config = config
@@ -274,12 +282,18 @@ class LSA(SurpriseAdequacy):
                 removed_rows.append(activation_node)
         refined_ats = np.transpose(self.train_ats)
         refined_ats = np.delete(refined_ats, removed_rows, axis=0)
-        if refined_ats.shape[0] == 0:
-            # TODO @Rwiddhi Discuss with michael: What happens in this case?
-            #   I'm suspicious - maybe we should abort the calculation here or at least raise a warning?
+        if refined_ats.shape[0] != 0:
+
+            kdes = [gaussian_kde(refined_ats)]
+            return kdes, removed_rows
+
+        else:
+
             print("All ats were removed by threshold {}".format(self.config.num_classes))
-        kdes = [gaussian_kde(refined_ats)]
-        return kdes, removed_rows
+            print("Change threshold. Exiting...")
+            sys.exit()
+
+
 
     def _classification_kdes(self):
         removed_rows = []
@@ -406,11 +420,6 @@ class DSA(SurpriseAdequacy):
                 if len(matches) > 0:
                     a_min_dist, b_min_dist = self._dsa_distances(all_idx, label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
-
-                # TODO @ Rwiddhi. This else clause looks unnecessary. Are you sure it is required here?
-                #   If it origins from the original code - are we sure we did not mess up something?
-                else:
-                    continue
 
             start += batch_size
 
