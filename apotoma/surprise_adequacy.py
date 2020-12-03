@@ -55,10 +55,15 @@ class SurpriseAdequacyConfig:
         elif self.num_classes < 0:
             raise ValueError(f"num_classes must be positive but was {self.num_classes}) ")
         elif self.min_var_threshold < 0:
-            raise ValueError(f"Variance threshold cannot be negative")
+            raise ValueError(f"Variance threshold cannot be negative, but was {self.min_var_threshold}")
 
         elif self.dataset_name not in ['mnist', 'cifar-10']:
             raise ValueError(f"Only Mnist and cifar-10 supported currently")
+
+        elif len(self.layer_names) == 0:
+            raise ValueError(f"Layer list cannot be empty")
+        elif len(self.layer_names) != len(set(self.layer_names)):
+            raise ValueError(f"Layer list cannot contain duplicates")
 
 
 class SurpriseAdequacy(NoveltyScore, ABC):
