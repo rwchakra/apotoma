@@ -12,15 +12,16 @@ from tensorflow.keras.models import load_model
 
 from apotoma.surprise_adequacy import DSA
 from apotoma.surprise_adequacy import LSA
+from apotoma.dissector import Dissector
+
+import argparse
 
 
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
-        # TODO @Rwiddhi. Move the h5 file to the assets folder
-        #   and use a relative path to refer to it (tests/asset/model_mnist.h5)
         self.model: tf.keras.Model = load_model(
-            '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_mnist.h5')
+            '/tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
         self.train_data = self.train_data.reshape(-1, 28, 28, 1)
         self.test_data = self.test_data.reshape(-1, 28, 28, 1)
@@ -31,26 +32,18 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.test_data = (self.test_data / 255.0) - (1.0 - 0.5)
 
     # DO this first
-    def test_train_ats_calculation_against_kims_implementation(self):
+    def test_train_ats_calculation_against_kims_implementation(self, config):
         datasplit_train, datasplit_test = self.train_data[0:100], self.test_data[0:100]
-
-        # TODO @Rwiddhi. Create instance of new config class instead of args
-        args = {'d': 'mnist', 'is_classification': True,
-                'dsa': True, 'lsa': False, 'batch_size': 128,
-                'var_threshold': 1e-5, 'upper_bound': 2000,
-                'n_bucket': 1000, 'num_classes': 10,
-                'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
 
         # HERE you'll calculate the ats on your code
         nodes = 10
-        sa = DSA(self.model, datasplit_train, args)
+        sa = DSA(self.model, datasplit_train, config=config)
         ats, pred = sa._calculate_ats()
 
         # Here you load the values from kims implementation
-        kim_ats = np.load('/tests/assets/mnist_train_activation_3_ats.npy')
-        # TODO @Rwiddhi. Move the file to the assets folder
-        #   and use a relative path to refer to it (tests/asset/...)
-        kim_pred = np.load('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/tmp/mnist_train_pred.npy.npy')
+        kim_ats = np.load('./assets/mnist_train_activation_3_ats.npy')
+
+        kim_pred = np.load('./assets/mnist_train_pred.npy')
 
         self.assertIsInstance(ats, np.ndarray)
         self.assertEqual(ats.shape, (100, nodes))
@@ -62,15 +55,9 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
-    def test_dsa_is_consistent_with_original_implementation(self):
-        # TODO @Rwiddhi. Create instance of new config class instead of args
-        args = {'d': 'mnist', 'is_classification': True,
-                'dsa': True, 'lsa': False, 'batch_size': 128,
-                'var_threshold': 1e-5, 'upper_bound': 2000,
-                'n_bucket': 1000, 'num_classes': 10,
-                'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
+    def test_dsa_is_consistent_with_original_implementation(self, config):
 
-        our_dsa = DSA(model=self.model, train_data=self.train_data, args=args)
+        our_dsa = DSA(model=self.model, train_data=self.train_data, config=config)
         our_dsa.prep()
         test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
 
@@ -79,15 +66,9 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_almost_equal(actual=test_dsa,
                                        desired=original_dsa, decimal=5)
 
-    def test_lsa_is_consistent_with_original_implementation(self):
-        # TODO @Rwiddhi. Create instance of new config class instead of args
-        args = {'d': 'mnist', 'is_classification': True,
-                'dsa': True, 'lsa': False, 'batch_size': 128,
-                'var_threshold': 1e-5, 'upper_bound': 2000,
-                'n_bucket': 1000, 'num_classes': 10,
-                'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
+    def test_lsa_is_consistent_with_original_implementation(self, config):
 
-        our_lsa = LSA(model=self.model, train_data=self.train_data, args=args)
+        our_lsa = LSA(model=self.model, train_data=self.train_data, config=config)
         our_lsa.prep()
         test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
         original_lsa = np.load("./assets/original_lsa.npy")
@@ -95,16 +76,9 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_almost_equal(actual=test_lsa,
                                        desired=original_lsa, decimal=5)
 
-    def test_lsa_kdes(self):
+    def test_lsa_kdes(self, config):
         nodes = 10
-        # TODO @Rwiddhi. Create instance of new config class instead of args
-        args = {'d': 'mnist', 'is_classification': True,
-                'dsa': True, 'lsa': False, 'batch_size': 128,
-                'var_threshold': 1e-5, 'upper_bound': 2000,
-                'n_bucket': 1000, 'num_classes': 10,
-                'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
-
-        our_lsa = LSA(model=self.model, train_data=self.train_data, args=args)
+        our_lsa = LSA(model=self.model, train_data=self.train_data, config=config)
         our_lsa.prep()
         test_kdes, test_rm_rows = our_lsa._calc_kdes()
 
@@ -112,3 +86,71 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertIsInstance(test_rm_rows, list)
         self.assertEqual(len(test_kdes), nodes)
         self.assertEqual(np.array(test_rm_rows).dtype, int)
+
+
+#TODO Map this into instances of config class, does not belong in test file
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--d", "-d", help="Dataset", type=str, default="mnist")
+    parser.add_argument(
+        "--lsa", "-lsa", help="Likelihood-based Surprise Adequacy", action="store_true"
+    )
+    parser.add_argument(
+        "--dsa", "-dsa", help="Distance-based Surprise Adequacy", action="store_true"
+    )
+    parser.add_argument(
+        "--target",
+        "-target",
+        help="Target input set (test or adversarial set)",
+        type=str,
+        default="fgsm",
+    )
+    parser.add_argument(
+        "--save_path", "-save_path", help="Save path", type=str, default="./tmp/"
+    )
+    parser.add_argument(
+        "--batch_size", "-batch_size", help="Batch size", type=int, default=128
+    )
+    parser.add_argument(
+        "--var_threshold",
+        "-var_threshold",
+        help="Variance threshold",
+        type=float,
+        default=1e-5,
+    )
+    parser.add_argument(
+        "--upper_bound", "-upper_bound", help="Upper bound", type=int, default=2000
+    )
+    parser.add_argument(
+        "--n_bucket",
+        "-n_bucket",
+        help="The number of buckets for coverage",
+        type=int,
+        default=1000,
+    )
+    parser.add_argument(
+        "--num_classes",
+        "-num_classes",
+        help="The number of classes",
+        type=int,
+        default=10,
+    )
+    parser.add_argument(
+        "--is_classification",
+        "-is_classification",
+        help="Is classification task",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--implementation",
+        "-implementation",
+        help="SA Implementation Type [fast_sa or benchmark]",
+        type=str,
+        default="fast_dsa",
+    )
+    config = parser.parse_args()
+    test_obj = TestSurpriseAdequacyConsistency()
+
+
