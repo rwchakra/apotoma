@@ -87,52 +87,8 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertEqual(len(test_kdes), nodes)
         self.assertEqual(np.array(test_rm_rows).dtype, int)
 
-    def test_dissector_sv_match(self, config):
 
-        diss = Dissector(model=self.model, config=config)
-
-        test_activations = np.array(([[0.7, 0.2, 0.1], [0.95, 0.04, 0.01], [0.65, 0.3, 0.05]]))
-        scores = np.empty(shape = (test_activations.shape[0], ))
-        true_scores = np.array([0.77777, 0.959595, 0.68421])
-        for i, p in enumerate(test_activations):
-            sv = diss._calc_sv_for_match(test_activations, i)
-            self.assertIsInstance(sv, float)
-            scores[i] = sv
-
-        np.testing.assert_almost_equal(true_scores, scores, decimal=5)
-
-    def test_dissector_sv_non_match(self, config):
-
-        diss = Dissector(model=self.model, config=config)
-
-        test_activations = np.array(([[0.7, 0.2, 0.1], [0.95, 0.04, 0.01], [0.65, 0.3, 0.05]]))
-        test_p = np.array([0, 1, 1])
-        scores = np.empty(shape=(test_activations.shape[0],))
-        true_scores = np.array([0.12500, 0.040404, 0.31578])
-        for i, p in enumerate(test_activations):
-            sv = diss._calc_sv_for_non_match(test_activations, i, test_p)
-            self.assertIsInstance(sv, float)
-            scores[i] = sv
-
-        np.testing.assert_almost_equal(true_scores, scores, decimal=5)
-
-    def test_pv_scores(self, config):
-
-        diss = Dissector(model=self.model, config=config)
-
-        scores = np.array(([[0.1258, 0.0404, 0.3157], [0.4212, 0.3535, 0.1268], [0.3574, 0.2424, 0.3662]]))
-        weights = np.array([2, 3, 5])
-        true_pv_scores = np.array([0.19513, 0.25429, 0.32730])
-        pv = diss.pv_scores(weights=weights, scores=scores)
-
-        np.testing.assert_almost_equal(true_pv_scores, pv, decimal=5)
-
-
-
-
-
-
-
+#TODO Map this into instances of config class, does not belong in test file
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

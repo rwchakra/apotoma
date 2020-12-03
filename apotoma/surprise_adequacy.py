@@ -41,7 +41,7 @@ class SurpriseAdequacyConfig:
     layer_names: List[str]
     saved_path: str
     dataset_name: str
-    num_classes: int = 10
+    num_classes: Union[int, None] = None
     min_var_threshold: float = 1e-5
     batch_size: int = 128
 
@@ -288,10 +288,7 @@ class LSA(SurpriseAdequacy):
             return kdes, removed_rows
 
         else:
-
-            print("All ats were removed by threshold {}".format(self.config.num_classes))
-            print("Change threshold. Exiting...")
-            sys.exit()
+            raise ValueError(f"All ats were removed by threshold: ", {}.format(self.config.min_var_threshold))
 
 
 
