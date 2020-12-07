@@ -138,15 +138,15 @@ class SurpriseAdequacy(NoveltyScore, ABC):
             # p = Pool(num_proc)
             print("[" + ds_name + "]" + " Model serving")
             # Shape of len(ds_name_pred): predictions for the ds_name set
-            pred = self.model.predict_classes(dataset, batch_size=self.config.batch_size, verbose=1)
+            pred:np.ndarray = self.model.predict_classes(dataset, batch_size=self.config.batch_size, verbose=1)
             if len(self.config.layer_names) == 1:
                 # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
-                layer_outputs = [
+                layer_outputs:list = [
                     temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
                 ]
 
             else:
-                layer_outputs = temp_model.predict(
+                layer_outputs:list = temp_model.predict(
                     dataset, batch_size=self.config['batch_size'], verbose=1
                 )
 
@@ -175,9 +175,9 @@ class SurpriseAdequacy(NoveltyScore, ABC):
     def _load_ats(self, ds_name):
         print("Found saved {} ATs, skip serving".format(ds_name))
         # In case train_ats is stored in a disk
-        saved_target_path = self._get_saved_path(ds_name)
-        ats = np.load(saved_target_path[0])
-        pred = np.load(saved_target_path[1])
+        saved_target_path:str = self._get_saved_path(ds_name)
+        ats:np.ndarray = np.load(saved_target_path[0])
+        pred:np.ndarray = np.load(saved_target_path[1])
         return ats, pred
 
     def _load_or_calc_train_ats(self, use_cache=False):
@@ -293,7 +293,7 @@ class LSA(SurpriseAdequacy):
             return kdes, removed_rows
 
         else:
-            raise ValueError(f"All ats were removed by threshold: ", {}.format(self.config.min_var_threshold))
+            raise ValueError(f"All ats were removed by threshold: ", self.config.min_var_threshold)
 
 
 
@@ -301,8 +301,8 @@ class LSA(SurpriseAdequacy):
         removed_rows = []
         for label in range(self.config.num_classes):
             # Shape of (num_activation nodes x num_examples_by_label)
-            row_vectors = np.transpose(self.train_ats[self.class_matrix[label]])
-            positions = np.where(np.var(row_vectors) < self.config.min_var_threshold)[0]
+            row_vectors: np.ndarray = np.transpose(self.train_ats[self.class_matrix[label]])
+            positions: np.ndarray = np.where(np.var(row_vectors) < self.config.min_var_threshold)[0]
 
             for p in positions:
                 removed_rows.append(p)
@@ -341,9 +341,9 @@ class LSA(SurpriseAdequacy):
         print("[" + ds_name + "] " + "Fetching LSA")
 
         if self.config.is_classification:
-            lsa = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
+            lsa:list = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
         else:
-            lsa = self._calc_regression_lsa(kdes, removed_rows, target_ats)
+            lsa:list = self._calc_regression_lsa(kdes, removed_rows, target_ats)
         return lsa
 
     @staticmethod
@@ -351,7 +351,7 @@ class LSA(SurpriseAdequacy):
         lsa = []
         kde = kdes[0]
         for at in tqdm(target_ats):
-            refined_at = np.delete(at, removed_rows, axis=0)
+            refined_at:np.ndarray = np.delete(at, removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
@@ -359,9 +359,9 @@ class LSA(SurpriseAdequacy):
     def _calc_classification_lsa(kdes, removed_rows, target_ats, target_pred):
         lsa = []
         for i, at in enumerate(tqdm(target_ats)):
-            label = target_pred[i]
+            label:int = target_pred[i]
             kde = kdes[label]
-            refined_at = np.delete(at, removed_rows, axis=0)
+            refined_at:np.ndarray = np.delete(at, removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
@@ -408,17 +408,17 @@ class DSA(SurpriseAdequacy):
 
         target_shape = target_pred.shape[0]
         while start < target_shape:
-            diff = target_shape - start
+            diff:int = target_shape - start
 
             if diff < batch_size:
-                batch = target_pred[start:start + diff]
+                batch:np.ndarray = target_pred[start:start + diff]
 
             else:
                 batch = target_pred[start: start + batch_size]
 
             for label in range(self.config.num_classes):
 
-                matches = np.where(batch == label)
+                matches:np.ndarray = np.where(batch == label)
                 if len(matches) > 0:
                     a_min_dist, b_min_dist = self._dsa_distances(all_idx, label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
@@ -429,16 +429,16 @@ class DSA(SurpriseAdequacy):
 
     def _dsa_distances(self, all_idx, label, matches, start, target_ats):
 
-        target_matches = target_ats[matches[0] + start]
-        train_matches_sameClass = self.train_ats[self.class_matrix[label]]
-        a_dist = target_matches[:, None] - train_matches_sameClass
-        a_dist_norms = np.linalg.norm(a_dist, axis=2)
-        a_min_dist = np.min(a_dist_norms, axis=1)
-        closest_position = np.argmin(a_dist_norms, axis=1)
-        closest_ats = train_matches_sameClass[closest_position]
-        train_matches_otherClasses = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
-        b_dist = closest_ats[:, None] - train_matches_otherClasses
-        b_dist_norms = np.linalg.norm(b_dist, axis=2)
-        b_min_dist = np.min(b_dist_norms, axis=1)
+        target_matches:np.ndarray = target_ats[matches[0] + start]
+        train_matches_sameClass:np.ndarray = self.train_ats[self.class_matrix[label]]
+        a_dist:np.ndarray = target_matches[:, None] - train_matches_sameClass
+        a_dist_norms:np.ndarray = np.linalg.norm(a_dist, axis=2)
+        a_min_dist:float = np.min(a_dist_norms, axis=1)
+        closest_position:np.ndarray = np.argmin(a_dist_norms, axis=1)
+        closest_ats:np.ndarray = train_matches_sameClass[closest_position]
+        train_matches_otherClasses:np.ndarray = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        b_dist:np.ndarray = closest_ats[:, None] - train_matches_otherClasses
+        b_dist_norms:np.ndarray = np.linalg.norm(b_dist, axis=2)
+        b_min_dist:np.ndarray = np.min(b_dist_norms, axis=1)
 
         return a_min_dist, b_min_dist
