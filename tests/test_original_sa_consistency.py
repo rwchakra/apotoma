@@ -55,7 +55,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_almost_equal(ats, kim_ats[0:100], decimal=5)
 
         self.assertIsInstance(pred, np.ndarray)
-        self.assertEqual(pred, (100,))
+        self.assertEqual(pred.shape, (100,))
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
