@@ -12,6 +12,7 @@ from tensorflow.keras.models import load_model
 
 from apotoma.surprise_adequacy import DSA
 from apotoma.surprise_adequacy import LSA
+from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from apotoma.dissector import Dissector
 
 import argparse
@@ -22,8 +23,9 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
         print(os.getcwd())
-        self.model: tf.keras.Model = load_model(
-            './tests/assets/model_mnist.h5')
+        config = SurpriseAdequacyConfig()
+        self.config = config
+        self.model: tf.keras.Model = load_model('./tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
         self.train_data = self.train_data.reshape(-1, 28, 28, 1)
         self.test_data = self.test_data.reshape(-1, 28, 28, 1)
@@ -34,18 +36,18 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.test_data = (self.test_data / 255.0) - (1.0 - 0.5)
 
     # DO this first
-    def test_train_ats_calculation_against_kims_implementation(self, config):
+    def test_train_ats_calculation_against_kims_implementation(self):
         datasplit_train, datasplit_test = self.train_data[0:100], self.test_data[0:100]
 
         # HERE you'll calculate the ats on your code
         nodes = 10
-        sa = DSA(self.model, datasplit_train, config=config)
-        ats, pred = sa._calculate_ats()
+        sa = DSA(self.model, datasplit_train, config=self.config)
+        ats, pred = sa._calculate_ats(datasplit_train, 'train')
 
         # Here you load the values from kims implementation
-        kim_ats = np.load('./assets/mnist_train_activation_3_ats.npy')
+        kim_ats = np.load('./tests/assets/mnist_train_activation_3_ats.npy')
 
-        kim_pred = np.load('./assets/mnist_train_pred.npy')
+        kim_pred = np.load('./tests/assets/mnist_train_pred.npy')
 
         self.assertIsInstance(ats, np.ndarray)
         self.assertEqual(ats.shape, (100, nodes))
@@ -57,37 +59,42 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
-    def test_dsa_is_consistent_with_original_implementation(self, config):
+    def test_dsa_is_consistent_with_original_implementation(self):
 
-        our_dsa = DSA(model=self.model, train_data=self.train_data, config=config)
+
+        our_dsa = DSA(model=self.model, train_data=self.train_data, config=self.config)
         our_dsa.prep()
         test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
 
-        original_dsa = np.load("./assets/original_dsa.npy")
+        original_dsa = np.load("./tests/assets/original_dsa.npy")
 
         np.testing.assert_almost_equal(actual=test_dsa,
                                        desired=original_dsa, decimal=5)
 
-    def test_lsa_is_consistent_with_original_implementation(self, config):
+    def test_lsa_is_consistent_with_original_implementation(self):
 
-        our_lsa = LSA(model=self.model, train_data=self.train_data, config=config)
+
+        our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
         test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
-        original_lsa = np.load("./assets/original_lsa.npy")
+        original_lsa = np.load("./tests/assets/original_lsa.npy")
 
         np.testing.assert_almost_equal(actual=test_lsa,
                                        desired=original_lsa, decimal=5)
 
-    def test_lsa_kdes(self, config):
+    def test_lsa_kdes(self):
         nodes = 10
-        our_lsa = LSA(model=self.model, train_data=self.train_data, config=config)
+        our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
         test_kdes, test_rm_rows = our_lsa._calc_kdes()
 
         self.assertIsInstance(test_kdes, dict)
         self.assertIsInstance(test_rm_rows, list)
         self.assertEqual(len(test_kdes), nodes)
-        self.assertEqual(np.array(test_rm_rows).dtype, int)
+        if len(test_rm_rows) == 0:
+            self.assertEqual(np.array(test_rm_rows).dtype, float)
+        else:
+            self.assertEqual(np.array(test_rm_rows).dtype, int)
 
 
 #TODO Map this into instances of config class, does not belong in test file
