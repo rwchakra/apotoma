@@ -15,11 +15,13 @@ from apotoma.surprise_adequacy import LSA
 from apotoma.dissector import Dissector
 
 import argparse
+import os
 
 
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
+        print(os.getcwd())
         self.model: tf.keras.Model = load_model(
             '/tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
