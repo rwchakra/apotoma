@@ -68,19 +68,16 @@ class SurpriseAdequacyConfig:
 
 class SurpriseAdequacy(NoveltyScore, ABC):
 
-    def __init__(self, model: tf.keras.Model, train_data: tf.data.Dataset, config: argparse.Namespace) -> None:
+    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: argparse.Namespace) -> None:
         super().__init__(model, train_data)
         self.train_ats, self.train_pred, self.class_matrix = None, None, {}
         self.config = config
 
-    def _get_saved_path(self, ds_name):
+    def _get_saved_path(self, ds_type:str):
         """Determine saved path of ats and pred
 
         Args:
-            base_path (str): Base save path.
-            dataset (str): Name of dataset.
-            dtype (str): Name of dataset type (e.g., train, test, fgsm, ...).
-            layer_names (list): List of layer names.
+            ds_type: Type of dataset: Train, Test, or Target.
 
         Returns:
             ats_path: File path of ats.
@@ -92,20 +89,20 @@ class SurpriseAdequacy(NoveltyScore, ABC):
         return (
             os.path.join(
                 self.config.saved_path,
-                self.config.d + "_" + ds_name + "_" + joined_layer_names + "_ats" + ".npy",
+                self.config.ds_names_name + "_" + ds_type + "_" + joined_layer_names + "_ats" + ".npy",
             ),
-            os.path.join(self.config.saved_path, self.config.d + "_" + ds_name + "_pred" + ".npy"),
+            os.path.join(self.config.saved_path, self.config.ds_name + "_" + ds_type + "_pred" + ".npy"),
         )
 
     # Returns ats and returns predictions
-    def _load_or_calculate_ats(self, dataset: tf.data.Dataset, ds_name: str, use_cache: bool) -> Tuple[
+    def _load_or_calculate_ats(self, dataset: np.ndarray, ds_type: str, use_cache: bool) -> Tuple[
         np.ndarray, np.ndarray]:
 
         """Determine activation traces train, target, and test datasets
 
                 Args:
                     dataset (ndarray): x_train or x_test or x_target.
-                    ds_name (str): Type of dataset: Train, Test, or Target.
+                    ds_type (str): Type of dataset: Train, Test, or Target.
                     use_cache (bool): Use stored files to load activation traces or not
 
                 Returns:
@@ -113,22 +110,22 @@ class SurpriseAdequacy(NoveltyScore, ABC):
                     pred (ndarray): 1-D Array of predictions
 
         """
-        print(f"Calculating the ats for {ds_name} dataset")
+        print(f"Calculating the ats for {ds_type} dataset")
 
-        saved_target_path = self._get_saved_path(ds_name)
+        saved_target_path = self._get_saved_path(ds_type)
         if os.path.exists(saved_target_path[0]) and use_cache:
-            return self._load_ats(ds_name)
+            return self._load_ats(ds_type)
         else:
-            ats, pred = self._calculate_ats(dataset, ds_name)
+            ats, pred = self._calculate_ats(dataset, ds_type)
 
             if saved_target_path is not None:
                 np.save(saved_target_path[0], ats)
                 np.save(saved_target_path[1], pred)
-                print("Cached the [" + ds_name + "]" + " ats and predictions")
+                print("Cached the [" + ds_type + "]" + " ats and predictions")
 
             return ats, pred
 
-    def _calculate_ats(self, dataset, ds_name):
+    def _calculate_ats(self, dataset: np.ndarray, ds_type:str):
         temp_model = Model(
             inputs=self.model.input,
             outputs=[self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
@@ -136,8 +133,8 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
         if self.config.is_classification:
             # p = Pool(num_proc)
-            print("[" + ds_name + "]" + " Model serving")
-            # Shape of len(ds_name_pred): predictions for the ds_name set
+            print("[" + ds_type + "]" + " Model serving")
+            # Shape of len(ds_type_pred): predictions for the ds_type set
             pred:np.ndarray = self.model.predict_classes(dataset, batch_size=self.config.batch_size, verbose=1)
             if len(self.config.layer_names) == 1:
                 # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
@@ -150,7 +147,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
                     dataset, batch_size=self.config['batch_size'], verbose=1
                 )
 
-            print("Processing " + ds_name + " ATs")
+            print("Processing " + ds_type + " ATs")
             ats = None
             for layer_name, layer_output in zip(self.config['layer_names'], layer_outputs):
                 print("Layer: " + layer_name)
@@ -172,10 +169,10 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
         return ats, pred
 
-    def _load_ats(self, ds_name):
-        print("Found saved {} ATs, skip serving".format(ds_name))
+    def _load_ats(self, ds_type:str):
+        print("Found saved {} ATs, skip serving".format(ds_type))
         # In case train_ats is stored in a disk
-        saved_target_path:str = self._get_saved_path(ds_name)
+        saved_target_path:str = self._get_saved_path(ds_type)
         ats:np.ndarray = np.load(saved_target_path[0])
         pred:np.ndarray = np.load(saved_target_path[1])
         return ats, pred
@@ -199,7 +196,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
             self.train_ats, self.train_pred = np.load(saved_train_path[0]), np.load(saved_train_path[1])
 
         else:
-            self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_name="train",
+            self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_type="train",
                                                                           use_cache=use_cache)
 
     def prep(self):
@@ -237,23 +234,23 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
 class LSA(SurpriseAdequacy):
 
-    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache=False):
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False):
         """
         Return LSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
         Args:
             target_data (ndarray): x_test or x_target.
-            ds_name (str): Type of dataset: Train, Test, or Target.
+            ds_type (str): Type of dataset: Train, Test, or Target.
             use_cache (bool): Use stored files to load activation traces or not
 
         Returns:
             lsa (float): The scalar LSA value
 
         """
-        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache=use_cache)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
 
         kdes, removed_rows = self._calc_kdes()
-        return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_name)
+        return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_type)
 
     def _calc_kdes(self) -> Tuple[List[object], List[int]]:
         """
@@ -261,7 +258,7 @@ class LSA(SurpriseAdequacy):
 
         Args:
             target_data (ndarray): x_test or x_target.
-            ds_name (str): Type of dataset: Train, Test, or Target.
+            ds_type (str): Type of dataset: Train, Test, or Target.
             use_cache (bool): Use stored files to load activation traces or not
 
         Returns:
@@ -323,22 +320,22 @@ class LSA(SurpriseAdequacy):
 
         return kdes, removed_rows
 
-    def _calc_lsa(self, target_ats, target_pred, kdes, removed_rows, ds_name):
+    def _calc_lsa(self, target_ats:np.ndarray, target_pred:np.ndarray, kdes:{}, removed_rows:list, ds_type:str):
         """
         Calculate scalar LSA value of target activation traces
 
         Args:
             target_ats (ndarray): Activation traces of target_data.
             target_pred(ndarray): 1-D Array of predicted labels
-            ds_name (str): Type of dataset: Test or Target.
-            removed_rows: Positions to skip
+            ds_type (str): Type of dataset: Test or Target.
+            removed_rows (list): Positions to skip
             kdes: Dict of scipy kde objects
 
         Returns:
             lsa (float): List of scalar LSA values
 
         """
-        print("[" + ds_name + "] " + "Fetching LSA")
+        print("[" + ds_type + "] " + "Fetching LSA")
 
         if self.config.is_classification:
             lsa:list = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
@@ -347,7 +344,7 @@ class LSA(SurpriseAdequacy):
         return lsa
 
     @staticmethod
-    def _calc_regression_lsa(kdes, removed_rows, target_ats):
+    def _calc_regression_lsa(kdes:{}, removed_rows:list, target_ats: np.ndarray):
         lsa = []
         kde = kdes[0]
         for at in tqdm(target_ats):
@@ -356,7 +353,7 @@ class LSA(SurpriseAdequacy):
         return lsa
 
     @staticmethod
-    def _calc_classification_lsa(kdes, removed_rows, target_ats, target_pred):
+    def _calc_classification_lsa(kdes: {}, removed_rows: list, target_ats: np.ndarray, target_pred: np.ndarray):
         lsa = []
         for i, at in enumerate(tqdm(target_ats)):
             label:int = target_pred[i]
@@ -368,30 +365,30 @@ class LSA(SurpriseAdequacy):
 
 class DSA(SurpriseAdequacy):
 
-    def calc(self, target_data: tf.data.Dataset, ds_name: str, use_cache=False):
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False):
         """
         Return DSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
                         Args:
                             target_data (ndarray): x_test or x_target.
-                            ds_name (str): Type of dataset: Train, Test, or Target.
+                            ds_type (str): Type of dataset: Train, Test, or Target.
                             use_cache (bool): Use stored files to load activation traces or not
 
                         Returns:
                             dsa (float): The scalar DSA value
 
         """
-        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_name=ds_name, use_cache=use_cache)
-        return self._calc_dsa(target_ats, target_pred, ds_name)
+        target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
+        return self._calc_dsa(target_ats, target_pred, ds_type)
 
-    def _calc_dsa(self, target_ats, target_pred, ds_name):
+    def _calc_dsa(self, target_ats:np.ndarray, target_pred: np.ndarray, ds_type:str):
 
         """
         Calculate scalar DSA value of target activation traces
 
             Args:
                 target_ats (ndarray): Activation traces of target_data.
-                ds_name (str): Type of dataset: Test or Target.
+                ds_type (str): Type of dataset: Test or Target.
                 target_pred (ndarray): 1-D Array of predicted labels
 
             Returns:
@@ -404,7 +401,7 @@ class DSA(SurpriseAdequacy):
         start = 0
         all_idx = list(range(len(self.train_pred)))
 
-        print("[" + ds_name + "] " + "Fetching DSA")
+        print("[" + ds_type + "] " + "Fetching DSA")
 
         target_shape = target_pred.shape[0]
         while start < target_shape:
@@ -427,7 +424,7 @@ class DSA(SurpriseAdequacy):
 
         return dsa
 
-    def _dsa_distances(self, all_idx, label, matches, start, target_ats):
+    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray):
 
         target_matches:np.ndarray = target_ats[matches[0] + start]
         train_matches_sameClass:np.ndarray = self.train_ats[self.class_matrix[label]]

@@ -1,11 +1,12 @@
 import abc
 
 import tensorflow as tf
+import numpy as np
 
 
 class NoveltyScore(abc.ABC):
 
-    def __init__(self, model: tf.keras.Model, train_data: tf.data.Dataset) -> None:
+    def __init__(self, model: tf.keras.Model, train_data: np.ndarray) -> None:
         super().__init__()
         self.model = model
         self.train_data = train_data
@@ -17,7 +18,7 @@ class NoveltyScore(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def calc(self, target_data: tf.data.Dataset, ds_name: str):
+    def calc(self, target_data: np.ndarray, ds_name: str):
         pass
 
     @abc.abstractmethod
