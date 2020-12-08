@@ -37,7 +37,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     # DO this first
     def test_train_ats_calculation_against_kims_implementation(self):
-        datasplit_train, datasplit_test = self.train_data[0:100], self.test_data[0:100]
+        datasplit_train, datasplit_test = self.train_data, self.test_data
 
         # HERE you'll calculate the ats on your code
         nodes = 10
@@ -50,12 +50,12 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         kim_pred = np.load('./tests/assets/mnist_train_pred.npy')
 
         self.assertIsInstance(ats, np.ndarray)
-        self.assertEqual(ats.shape, (100, nodes))
+        self.assertEqual(ats.shape, (60000, nodes))
         self.assertEqual(ats.dtype, np.float32)
-        np.testing.assert_almost_equal(ats, kim_ats[0:100], decimal=5)
+        np.testing.assert_almost_equal(ats, kim_ats, decimal=5)
 
         self.assertIsInstance(pred, np.ndarray)
-        self.assertEqual(pred.shape, (100,))
+        self.assertEqual(pred.shape, (60000,))
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
@@ -69,7 +69,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         original_dsa = np.load("./tests/assets/original_dsa.npy")
 
         np.testing.assert_almost_equal(actual=test_dsa,
-                                       desired=original_dsa, decimal=5)
+                                       desired=original_dsa, decimal=2)
 
     def test_lsa_is_consistent_with_original_implementation(self):
 
@@ -80,7 +80,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         original_lsa = np.load("./tests/assets/original_lsa.npy")
 
         np.testing.assert_almost_equal(actual=test_lsa,
-                                       desired=original_lsa, decimal=5)
+                                       desired=original_lsa, decimal=2)
 
     def test_lsa_kdes(self):
         nodes = 10
