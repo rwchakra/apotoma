@@ -66,7 +66,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         our_dsa.prep()
         test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
 
-        original_dsa = np.load("./tests/assets/original_dsa.npy")
+        original_dsa = np.load("./tests/assets/original_dsa_scores.npy")
 
         np.testing.assert_almost_equal(actual=test_dsa,
                                        desired=original_dsa, decimal=2)
@@ -77,7 +77,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
         test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
-        original_lsa = np.load("./tests/assets/original_lsa.npy")
+        original_lsa = np.load("./tests/assets/original_lsa_scores.npy")
 
         np.testing.assert_almost_equal(actual=test_lsa,
                                        desired=original_lsa, decimal=2)
