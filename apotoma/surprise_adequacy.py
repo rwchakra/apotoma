@@ -77,7 +77,7 @@ class SurpriseAdequacy(ABC):
         """Determine saved path of ats and pred
 
         Args:
-            ds_type: Type of dataset: Train, Test, or Target.
+            ds_type: Type of dataset: Typically one of {Train, Test, Target}.
 
         Returns:
             ats_path: File path of ats.
@@ -113,7 +113,7 @@ class SurpriseAdequacy(ABC):
         print(f"Calculating the ats for {ds_type} dataset")
 
         saved_target_path = self._get_saved_path(ds_type)
-        if os.path.exists(saved_target_path[0]) and use_cache:
+        if saved_target_path is not None and os.path.exists(saved_target_path[0]) and use_cache:
             print(f"Found saved {ds_type} ATs, skip at collection from model")
             return self._load_ats(ds_type)
         else:
@@ -178,7 +178,7 @@ class SurpriseAdequacy(ABC):
         pred: np.ndarray = np.load(saved_target_path[1])
         return ats, pred
 
-    def _load_or_calc_train_ats(self, use_cache=False):
+    def _load_or_calc_train_ats(self, use_cache=False) -> None:
         """Load or get actviation traces of training inputs
 
         Args:

@@ -1,6 +1,7 @@
 # TODO in this folder we will implement integration tests.
 #   Integration tests test larger workflows than unit tests and may thus take longer to implement.
 #   Integration tests are typically executed only when merging into main or selectively during development.
+import os
 import shutil
 import unittest
 
@@ -12,8 +13,6 @@ from tensorflow.keras.models import load_model
 from apotoma.surprise_adequacy import DSA
 from apotoma.surprise_adequacy import LSA
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
-
-import os
 
 
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
@@ -58,8 +57,6 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         np.testing.assert_equal(pred, kim_pred)
 
     def test_dsa_is_consistent_with_original_implementation(self):
-
-
         our_dsa = DSA(model=self.model, train_data=self.train_data, config=self.config)
         our_dsa.prep()
         test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
@@ -70,8 +67,6 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
                                        desired=original_dsa, decimal=2)
 
     def test_lsa_is_consistent_with_original_implementation(self):
-
-
         our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
         test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
@@ -93,8 +88,6 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
             self.assertEqual(np.array(test_rm_rows).dtype, float)
         else:
             self.assertEqual(np.array(test_rm_rows).dtype, int)
-
-
 
 # if __name__=='__main__':
 #     parser = argparse.ArgumentParser()
