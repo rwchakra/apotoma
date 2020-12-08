@@ -10,6 +10,7 @@ from tensorflow.keras.models import Model
 from tqdm import tqdm
 import sys
 import argparse
+from dataclasses import field
 
 from apotoma.novelty_score import NoveltyScore
 
@@ -34,14 +35,14 @@ class SurpriseAdequacyConfig:
         batch_size (int): Batch size to use while predicting.
 
      Raises:
-        ValueError: If any of the config parameters takes and illegal value.
+        ValueError: If any of the config parameters takes an illegal value.
     """
 
-    is_classification: bool
-    layer_names: List[str]
-    saved_path: str
-    dataset_name: str
-    num_classes: Union[int, None] = None
+    is_classification: bool = True
+    layer_names: List[str] = field(default_factory=lambda : ['activation_3'])
+    ds_name: str = 'mnist'
+    saved_path: str = './tests/assets/'
+    num_classes: Union[int, None] = 10
     min_var_threshold: float = 1e-5
     batch_size: int = 128
 
@@ -57,7 +58,7 @@ class SurpriseAdequacyConfig:
         elif self.min_var_threshold < 0:
             raise ValueError(f"Variance threshold cannot be negative, but was {self.min_var_threshold}")
 
-        elif self.dataset_name not in ['mnist', 'cifar-10']:
+        elif self.ds_name not in ['mnist', 'cifar-10']:
             raise ValueError(f"Only Mnist and cifar-10 supported currently")
 
         elif len(self.layer_names) == 0:
@@ -68,12 +69,12 @@ class SurpriseAdequacyConfig:
 
 class SurpriseAdequacy(NoveltyScore, ABC):
 
-    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: argparse.Namespace) -> None:
+    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: SurpriseAdequacyConfig) -> None:
         super().__init__(model, train_data)
         self.train_ats, self.train_pred, self.class_matrix = None, None, {}
         self.config = config
 
-    def _get_saved_path(self, ds_type:str):
+    def _get_saved_path(self, ds_type:str) -> Tuple[str, str]:
         """Determine saved path of ats and pred
 
         Args:
@@ -89,7 +90,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
         return (
             os.path.join(
                 self.config.saved_path,
-                self.config.ds_names_name + "_" + ds_type + "_" + joined_layer_names + "_ats" + ".npy",
+                self.config.ds_name + "_" + ds_type + "_" + joined_layer_names + "_ats" + ".npy",
             ),
             os.path.join(self.config.saved_path, self.config.ds_name + "_" + ds_type + "_pred" + ".npy"),
         )
@@ -125,7 +126,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
             return ats, pred
 
-    def _calculate_ats(self, dataset: np.ndarray, ds_type:str):
+    def _calculate_ats(self, dataset: np.ndarray, ds_type:str) -> Tuple[np.ndarray, np.ndarray]:
         temp_model = Model(
             inputs=self.model.input,
             outputs=[self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
@@ -135,7 +136,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
             # p = Pool(num_proc)
             print("[" + ds_type + "]" + " Model serving")
             # Shape of len(ds_type_pred): predictions for the ds_type set
-            pred:np.ndarray = self.model.predict_classes(dataset, batch_size=self.config.batch_size, verbose=1)
+            pred:np.ndarray = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1), axis=1)
             if len(self.config.layer_names) == 1:
                 # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
                 layer_outputs:list = [
@@ -149,7 +150,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
             print("Processing " + ds_type + " ATs")
             ats = None
-            for layer_name, layer_output in zip(self.config['layer_names'], layer_outputs):
+            for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
                 print("Layer: " + layer_name)
                 if layer_output[0].ndim == 3:
                     # For convolutional layers
@@ -169,10 +170,10 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
         return ats, pred
 
-    def _load_ats(self, ds_type:str):
+    def _load_ats(self, ds_type:str) -> Tuple[np.ndarray, np.ndarray]:
         print("Found saved {} ATs, skip serving".format(ds_type))
         # In case train_ats is stored in a disk
-        saved_target_path:str = self._get_saved_path(ds_type)
+        saved_target_path = self._get_saved_path(ds_type)
         ats:np.ndarray = np.load(saved_target_path[0])
         pred:np.ndarray = np.load(saved_target_path[1])
         return ats, pred
@@ -234,7 +235,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
 class LSA(SurpriseAdequacy):
 
-    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False):
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> List[float]:
         """
         Return LSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -244,7 +245,7 @@ class LSA(SurpriseAdequacy):
             use_cache (bool): Use stored files to load activation traces or not
 
         Returns:
-            lsa (float): The scalar LSA value
+            lsa (float): List of scalar LSA values
 
         """
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
@@ -252,7 +253,7 @@ class LSA(SurpriseAdequacy):
         kdes, removed_rows = self._calc_kdes()
         return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_type)
 
-    def _calc_kdes(self) -> Tuple[List[object], List[int]]:
+    def _calc_kdes(self) -> Tuple[dict, List[int]]:
         """
         Determine Gaussian KDE for each label and list of removed rows based on variance threshold, if any.
 
@@ -294,7 +295,7 @@ class LSA(SurpriseAdequacy):
 
 
 
-    def _classification_kdes(self):
+    def _classification_kdes(self) -> Tuple[dict, List[int]]:
         removed_rows = []
         for label in range(self.config.num_classes):
             # Shape of (num_activation nodes x num_examples_by_label)
@@ -375,7 +376,7 @@ class DSA(SurpriseAdequacy):
                             use_cache (bool): Use stored files to load activation traces or not
 
                         Returns:
-                            dsa (float): The scalar DSA value
+                            dsa (float): List of scalar DSA values
 
         """
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
