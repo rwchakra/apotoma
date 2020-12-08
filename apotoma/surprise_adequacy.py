@@ -10,8 +10,6 @@ from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
 
-from apotoma.novelty_score import NoveltyScore
-
 
 @dataclass
 class SurpriseAdequacyConfig:
@@ -65,11 +63,14 @@ class SurpriseAdequacyConfig:
             raise ValueError(f"Layer list cannot contain duplicates")
 
 
-class SurpriseAdequacy(NoveltyScore, ABC):
+class SurpriseAdequacy(ABC):
 
     def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: SurpriseAdequacyConfig) -> None:
-        super().__init__(model, train_data)
-        self.train_ats, self.train_pred, self.class_matrix = None, None, {}
+        self.model = model
+        self.train_data = train_data
+        self.train_ats = None
+        self.train_pred = None
+        self.class_matrix = {}
         self.config = config
 
     def _get_saved_path(self, ds_type: str) -> Tuple[str, str]:

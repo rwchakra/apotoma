@@ -13,9 +13,7 @@ from tensorflow.keras.models import load_model
 from apotoma.surprise_adequacy import DSA
 from apotoma.surprise_adequacy import LSA
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
-from apotoma.dissector import Dissector
 
-import argparse
 import os
 
 
