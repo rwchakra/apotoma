@@ -1,6 +1,7 @@
 import os
 from abc import ABC
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Tuple, List, Union
 
 import numpy as np
@@ -8,9 +9,6 @@ import tensorflow as tf
 from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
-import sys
-import argparse
-from dataclasses import field
 
 from apotoma.novelty_score import NoveltyScore
 
@@ -39,7 +37,7 @@ class SurpriseAdequacyConfig:
     """
 
     is_classification: bool = True
-    layer_names: List[str] = field(default_factory=lambda : ['activation_3'])
+    layer_names: List[str] = field(default_factory=lambda: ['activation_3'])
     ds_name: str = 'mnist'
     saved_path: str = './tests/assets/'
     num_classes: Union[int, None] = 10
@@ -74,7 +72,7 @@ class SurpriseAdequacy(NoveltyScore, ABC):
         self.train_ats, self.train_pred, self.class_matrix = None, None, {}
         self.config = config
 
-    def _get_saved_path(self, ds_type:str) -> Tuple[str, str]:
+    def _get_saved_path(self, ds_type: str) -> Tuple[str, str]:
         """Determine saved path of ats and pred
 
         Args:
@@ -101,59 +99,62 @@ class SurpriseAdequacy(NoveltyScore, ABC):
 
         """Determine activation traces train, target, and test datasets
 
-                Args:
-                    dataset (ndarray): x_train or x_test or x_target.
-                    ds_type (str): Type of dataset: Train, Test, or Target.
-                    use_cache (bool): Use stored files to load activation traces or not
+        Args:
+            dataset (ndarray): x_train or x_test or x_target.
+            ds_type (str): Type of dataset: Train, Test, or Target.
+            use_cache (bool): Use stored files to load activation traces or not
 
-                Returns:
-                    ats (ndarray): Activation traces (Shape of num_examples * num_nodes).
-                    pred (ndarray): 1-D Array of predictions
+        Returns:
+            ats (ndarray): Activation traces (Shape of num_examples * num_nodes).
+            pred (ndarray): 1-D Array of predictions
 
         """
         print(f"Calculating the ats for {ds_type} dataset")
 
         saved_target_path = self._get_saved_path(ds_type)
         if os.path.exists(saved_target_path[0]) and use_cache:
+            print(f"Found saved {ds_type} ATs, skip at collection from model")
             return self._load_ats(ds_type)
         else:
-            ats, pred = self._calculate_ats(dataset, ds_type)
+            ats, pred = self._calculate_ats(dataset)
 
             if saved_target_path is not None:
                 np.save(saved_target_path[0], ats)
                 np.save(saved_target_path[1], pred)
-                print("Cached the [" + ds_type + "]" + " ats and predictions")
+                print(f"Saved the [{ds_type}] ats and predictions to {saved_target_path[0]} and {saved_target_path[1]}")
 
             return ats, pred
 
-    def _calculate_ats(self, dataset: np.ndarray, ds_type:str) -> Tuple[np.ndarray, np.ndarray]:
+    def _calculate_ats(self, dataset: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         temp_model = Model(
             inputs=self.model.input,
             outputs=[self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
         )
 
         if self.config.is_classification:
-            # p = Pool(num_proc)
-            print("[" + ds_type + "]" + " Model serving")
-            # Shape of len(ds_type_pred): predictions for the ds_type set
-            pred:np.ndarray = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1), axis=1)
+            # TODO (Michael) I think we can replace the following two predict statements to a single one
+            #   By adding the original output layer to the outputs of the temp model.
+            #   I will change that in a separate PR (and only after the tests are running),
+            #   To make sure I do not mess anything up
+
+            # Make the prediction on the original model.
+            pred: np.ndarray = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1),
+                                         axis=1)
+            # Get the activation traces of the inner layers of the model.
+            layer_outputs: list = temp_model.predict(
+                dataset, batch_size=self.config.batch_size, verbose=1
+            )
+
+            # If we only collect the ats of a sinlge layer, they are not represented as list
+            #   For compatibility, we pack them in a single-item list
             if len(self.config.layer_names) == 1:
-                # layer_outputs is 60,000 * 10, since there are 10 nodes in activation_3
-                layer_outputs:list = [
-                    temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
-                ]
+                layer_outputs = [layer_outputs]
 
-            else:
-                layer_outputs:list = temp_model.predict(
-                    dataset, batch_size=self.config['batch_size'], verbose=1
-                )
-
-            print("Processing " + ds_type + " ATs")
             ats = None
             for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
                 print("Layer: " + layer_name)
                 if layer_output[0].ndim == 3:
-                    # For convolutional layers
+                    # For convolutional layers, taken over from original SA implementation
                     layer_matrix = np.array(
                         map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
                             [layer_output[i] for i in range(len(dataset))])
@@ -162,30 +163,28 @@ class SurpriseAdequacy(NoveltyScore, ABC):
                     layer_matrix = np.array(layer_output)
 
                 if ats is None:
-                    # Initially ats is None, so ats is 60,000 * 10
+                    # Shape of ats will be num_inputs x num_nodes_in_layer
                     ats = layer_matrix
                 else:
                     ats = np.append(ats, layer_matrix, axis=1)
-                    layer_matrix = None
 
         return ats, pred
 
-    def _load_ats(self, ds_type:str) -> Tuple[np.ndarray, np.ndarray]:
-        print("Found saved {} ATs, skip serving".format(ds_type))
+    def _load_ats(self, ds_type: str) -> Tuple[np.ndarray, np.ndarray]:
         # In case train_ats is stored in a disk
         saved_target_path = self._get_saved_path(ds_type)
-        ats:np.ndarray = np.load(saved_target_path[0])
-        pred:np.ndarray = np.load(saved_target_path[1])
+        ats: np.ndarray = np.load(saved_target_path[0])
+        pred: np.ndarray = np.load(saved_target_path[1])
         return ats, pred
 
     def _load_or_calc_train_ats(self, use_cache=False):
         """Load or get actviation traces of training inputs
 
-                        Args:
-                            use_cache: To load stored files or not
+        Args:
+            use_cache: To load stored files or not
 
-                        Returns:
-                            None. train_ats and train_pred are init() variables in super class NoveltyScore.
+        Returns:
+            None. train_ats and train_pred are init() variables in super class NoveltyScore.
 
         """
 
@@ -228,6 +227,8 @@ class SurpriseAdequacy(NoveltyScore, ABC):
             saved_path(str): Base directory path
 
         """
+        # TODO should we replace this with explicit names (the exact save train/target/test paths)?
+        #   Imaging people having other (non-sa related) npy files in the saved_path folder...
         files = [f for f in os.listdir(saved_path) if f.endswith('.npy')]
         for f in files:
             os.remove(os.path.join(saved_path, f))
@@ -273,7 +274,11 @@ class LSA(SurpriseAdequacy):
         else:
             kdes, removed_rows = self._regression_kdes()
 
-        print("The number of removed columns: {}".format(len(removed_rows)))
+        # TODO @Rwiddhi Please double-check.
+        #   These rows are representing nodes ('neurons in a layer'), right?
+        #   So this print statement (which I wrote) is correct?
+        print((f"Ignoring the activation traces of {len(removed_rows)} nodes "
+               f"as their variation is not high enough."))
 
         return kdes, removed_rows
 
@@ -293,8 +298,6 @@ class LSA(SurpriseAdequacy):
         else:
             raise ValueError(f"All ats were removed by threshold: ", self.config.min_var_threshold)
 
-
-
     def _classification_kdes(self) -> Tuple[dict, List[int]]:
         removed_rows = []
         for label in range(self.config.num_classes):
@@ -313,15 +316,14 @@ class LSA(SurpriseAdequacy):
             refined_ats = np.delete(refined_ats, removed_rows, axis=0)
 
             if refined_ats.shape[0] == 0:
-                print(
-                    "Ats were removed by threshold {}".format(self.config.num_classes)
-                )
+                print(f"Ats for label {label} were removed by threshold {self.config.min_var_threshold}")
                 break
+
             kdes[label] = gaussian_kde(refined_ats)
 
         return kdes, removed_rows
 
-    def _calc_lsa(self, target_ats:np.ndarray, target_pred:np.ndarray, kdes:{}, removed_rows:list, ds_type:str):
+    def _calc_lsa(self, target_ats: np.ndarray, target_pred: np.ndarray, kdes: {}, removed_rows: list, ds_type: str):
         """
         Calculate scalar LSA value of target activation traces
 
@@ -336,20 +338,20 @@ class LSA(SurpriseAdequacy):
             lsa (float): List of scalar LSA values
 
         """
-        print("[" + ds_type + "] " + "Fetching LSA")
+        print(f"[{ds_type}] Calculating LSA")
 
         if self.config.is_classification:
-            lsa:list = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
+            lsa: list = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
         else:
-            lsa:list = self._calc_regression_lsa(kdes, removed_rows, target_ats)
+            lsa: list = self._calc_regression_lsa(kdes, removed_rows, target_ats)
         return lsa
 
     @staticmethod
-    def _calc_regression_lsa(kdes:{}, removed_rows:list, target_ats: np.ndarray):
+    def _calc_regression_lsa(kdes: {}, removed_rows: list, target_ats: np.ndarray):
         lsa = []
         kde = kdes[0]
         for at in tqdm(target_ats):
-            refined_at:np.ndarray = np.delete(at, removed_rows, axis=0)
+            refined_at: np.ndarray = np.delete(at, removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
@@ -357,86 +359,92 @@ class LSA(SurpriseAdequacy):
     def _calc_classification_lsa(kdes: {}, removed_rows: list, target_ats: np.ndarray, target_pred: np.ndarray):
         lsa = []
         for i, at in enumerate(tqdm(target_ats)):
-            label:int = target_pred[i]
+            label: int = target_pred[i]
             kde = kdes[label]
-            refined_at:np.ndarray = np.delete(at, removed_rows, axis=0)
+            refined_at: np.ndarray = np.delete(at, removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
 
 class DSA(SurpriseAdequacy):
 
+    def __init__(self, model: tf.keras.Model,
+                 train_data: np.ndarray,
+                 config: SurpriseAdequacyConfig,
+                 dsa_batch_size=500) -> None:
+        super().__init__(model, train_data, config)
+        self.dsa_batch_size = dsa_batch_size
+
     def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False):
         """
         Return DSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
-                        Args:
-                            target_data (ndarray): x_test or x_target.
-                            ds_type (str): Type of dataset: Train, Test, or Target.
-                            use_cache (bool): Use stored files to load activation traces or not
+        Args:
+            target_data (ndarray): x_test or x_target.
+            ds_type (str): Type of dataset: Train, Test, or Target.
+            use_cache (bool): Use stored files to load activation traces or not
 
-                        Returns:
-                            dsa (float): List of scalar DSA values
+        Returns:
+            dsa (float): List of scalar DSA values
 
         """
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
         return self._calc_dsa(target_ats, target_pred, ds_type)
 
-    def _calc_dsa(self, target_ats:np.ndarray, target_pred: np.ndarray, ds_type:str):
+    def _calc_dsa(self, target_ats: np.ndarray, target_pred: np.ndarray, ds_type: str):
 
         """
         Calculate scalar DSA value of target activation traces
 
-            Args:
-                target_ats (ndarray): Activation traces of target_data.
-                ds_type (str): Type of dataset: Test or Target.
-                target_pred (ndarray): 1-D Array of predicted labels
+        Args:
+            target_ats (ndarray): Activation traces of target_data.
+            ds_type (str): Type of dataset: Test or Target.
+            target_pred (ndarray): 1-D Array of predicted labels
 
-            Returns:
-                dsa (float): List of scalar DSA values
+        Returns:
+            dsa (float): List of scalar DSA values
 
         """
 
         dsa = np.empty(shape=target_pred.shape[0])
-        batch_size = 500
         start = 0
         all_idx = list(range(len(self.train_pred)))
 
-        print("[" + ds_type + "] " + "Fetching DSA")
+        print(f"[{ds_type}] Calculating DSA")
 
-        target_shape = target_pred.shape[0]
-        while start < target_shape:
-            diff:int = target_shape - start
+        num_targets = target_pred.shape[0]
+        while start < num_targets:
 
-            if diff < batch_size:
-                batch:np.ndarray = target_pred[start:start + diff]
-
+            # Select batch
+            diff: int = num_targets - start
+            if diff < self.dsa_batch_size:
+                batch: np.ndarray = target_pred[start:start + diff]
             else:
-                batch = target_pred[start: start + batch_size]
+                batch = target_pred[start: start + self.dsa_batch_size]
 
+            # Calculate DSA per label
             for label in range(self.config.num_classes):
-
-                matches:np.ndarray = np.where(batch == label)
+                matches: np.ndarray = np.where(batch == label)
                 if len(matches) > 0:
                     a_min_dist, b_min_dist = self._dsa_distances(all_idx, label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
 
-            start += batch_size
+            start += self.dsa_batch_size
 
         return dsa
 
     def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray):
 
-        target_matches:np.ndarray = target_ats[matches[0] + start]
-        train_matches_sameClass:np.ndarray = self.train_ats[self.class_matrix[label]]
-        a_dist:np.ndarray = target_matches[:, None] - train_matches_sameClass
-        a_dist_norms:np.ndarray = np.linalg.norm(a_dist, axis=2)
-        a_min_dist:float = np.min(a_dist_norms, axis=1)
-        closest_position:np.ndarray = np.argmin(a_dist_norms, axis=1)
-        closest_ats:np.ndarray = train_matches_sameClass[closest_position]
-        train_matches_otherClasses:np.ndarray = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
-        b_dist:np.ndarray = closest_ats[:, None] - train_matches_otherClasses
-        b_dist_norms:np.ndarray = np.linalg.norm(b_dist, axis=2)
-        b_min_dist:np.ndarray = np.min(b_dist_norms, axis=1)
+        target_matches: np.ndarray = target_ats[matches[0] + start]
+        train_matches_same_class: np.ndarray = self.train_ats[self.class_matrix[label]]
+        a_dist: np.ndarray = target_matches[:, None] - train_matches_same_class
+        a_dist_norms: np.ndarray = np.linalg.norm(a_dist, axis=2)
+        a_min_dist: float = np.min(a_dist_norms, axis=1)
+        closest_position: np.ndarray = np.argmin(a_dist_norms, axis=1)
+        closest_ats: np.ndarray = train_matches_same_class[closest_position]
+        train_matches_other_classes: np.ndarray = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        b_dist: np.ndarray = closest_ats[:, None] - train_matches_other_classes
+        b_dist_norms: np.ndarray = np.linalg.norm(b_dist, axis=2)
+        b_min_dist: np.ndarray = np.min(b_dist_norms, axis=1)
 
         return a_min_dist, b_min_dist
