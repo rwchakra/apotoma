@@ -1,8 +1,7 @@
 # TODO in this folder we will implement integration tests.
 #   Integration tests test larger workflows than unit tests and may thus take longer to implement.
 #   Integration tests are typically executed only when merging into main or selectively during development.
-
-
+import shutil
 import unittest
 
 import numpy as np
@@ -20,8 +19,11 @@ import os
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
-        print(os.getcwd())
-        self.config = SurpriseAdequacyConfig()
+        path = '/tmp/data/'
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        os.mkdir(path)
+        self.config = SurpriseAdequacyConfig(saved_path=path)
         self.model: tf.keras.Model = load_model('./tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
         self.train_data = self.train_data.reshape(-1, 28, 28, 1)
@@ -33,7 +35,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         self.test_data = (self.test_data / 255.0) - (1.0 - 0.5)
 
     def test_train_ats_calculation_against_kims_implementation(self):
-        datasplit_train, datasplit_test = self.train_data[0:100], self.test_data[0:100]
+        datasplit_train, datasplit_test = self.train_data, self.test_data
 
         # HERE you'll calculate the ats on your code
         nodes = 10
@@ -41,17 +43,17 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         ats, pred = sa._calculate_ats(datasplit_train)
 
         # Here you load the values from kims implementation
-        kim_ats = np.load('./tests/assets/mnist_train_activation_3_ats.npy')
+        kim_ats = np.load('./tests/assets/original_mnist_train_activation_3_ats.npy')
 
-        kim_pred = np.load('./tests/assets/mnist_train_pred.npy')
+        kim_pred = np.load('./tests/assets/original_mnist_train_pred.npy')
 
         self.assertIsInstance(ats, np.ndarray)
-        self.assertEqual(ats.shape, (100, nodes))
+        self.assertEqual(ats.shape, (60000, nodes))
         self.assertEqual(ats.dtype, np.float32)
-        np.testing.assert_almost_equal(ats, kim_ats[0:100], decimal=5)
+        np.testing.assert_almost_equal(ats, kim_ats, decimal=5)
 
         self.assertIsInstance(pred, np.ndarray)
-        self.assertEqual(pred.shape, (100,))
+        self.assertEqual(pred.shape, (60000,))
         self.assertEqual(pred.dtype, np.int)
         np.testing.assert_equal(pred, kim_pred)
 
@@ -62,10 +64,10 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         our_dsa.prep()
         test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
 
-        original_dsa = np.load("./tests/assets/original_dsa.npy")
+        original_dsa = np.load("./tests/assets/original_dsa_scores.npy")
 
         np.testing.assert_almost_equal(actual=test_dsa,
-                                       desired=original_dsa, decimal=5)
+                                       desired=original_dsa, decimal=2)
 
     def test_lsa_is_consistent_with_original_implementation(self):
 
@@ -73,10 +75,10 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
         test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
-        original_lsa = np.load("./tests/assets/original_lsa.npy")
+        original_lsa = np.load("./tests/assets/original_lsa_scores.npy")
 
         np.testing.assert_almost_equal(actual=test_lsa,
-                                       desired=original_lsa, decimal=5)
+                                       desired=original_lsa, decimal=2)
 
     def test_lsa_kdes(self):
         nodes = 10
