@@ -139,7 +139,7 @@ class SurpriseAdequacy(ABC):
             #   To make sure I do not mess anything up
 
             # Make the prediction on the original model.
-            pred: np.ndarray = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1),
+            pred = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1),
                                          axis=1)
             # Get the activation traces of the inner layers of the model.
             layer_outputs: list = temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
@@ -371,7 +371,7 @@ class LSA(SurpriseAdequacy):
                                  target_pred: np.ndarray) -> List[float]:
         lsa = []
         for i, at in enumerate(tqdm(target_ats)):
-            label: int = target_pred[i]
+            label = target_pred[i]
             kde = kdes[label]
             refined_at: np.ndarray = np.delete(at, removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
@@ -428,15 +428,15 @@ class DSA(SurpriseAdequacy):
         while start < num_targets:
 
             # Select batch
-            diff: int = num_targets - start
+            diff = num_targets - start
             if diff < self.dsa_batch_size:
-                batch: np.ndarray = target_pred[start:start + diff]
+                batch = target_pred[start:start + diff]
             else:
                 batch = target_pred[start: start + self.dsa_batch_size]
 
             # Calculate DSA per label
             for label in range(self.config.num_classes):
-                matches: np.ndarray = np.where(batch == label)
+                matches = np.where(batch == label)
                 if len(matches) > 0:
                     a_min_dist, b_min_dist = self._dsa_distances(all_idx, label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
@@ -447,19 +447,16 @@ class DSA(SurpriseAdequacy):
 
     def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray):
 
-        target_matches: np.ndarray = target_ats[matches[0] + start]
-        train_matches_same_class: np.ndarray = self.train_ats[self.class_matrix[label]]
-        a_dist: np.ndarray = target_matches[:, None] - train_matches_same_class
-        a_dist_norms: np.ndarray = np.linalg.norm(a_dist, axis=2)
-        # TODO Issue #24 @Rwiddhi this type hint looks wrong. I think it's an np.ndarray.
-        #   can you check if everyting here is as you expect and also add return type hint for the method?
-        #   (e.g.  -> Tuple[np.ndarray, np.ndarray] )
-        a_min_dist: float = np.min(a_dist_norms, axis=1)
-        closest_position: np.ndarray = np.argmin(a_dist_norms, axis=1)
-        closest_ats: np.ndarray = train_matches_same_class[closest_position]
-        train_matches_other_classes: np.ndarray = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
-        b_dist: np.ndarray = closest_ats[:, None] - train_matches_other_classes
-        b_dist_norms: np.ndarray = np.linalg.norm(b_dist, axis=2)
-        b_min_dist: np.ndarray = np.min(b_dist_norms, axis=1)
+        target_matches = target_ats[matches[0] + start]
+        train_matches_sameClass = self.train_ats[self.class_matrix[label]]
+        a_dist = target_matches[:, None] - train_matches_sameClass
+        a_dist_norms = np.linalg.norm(a_dist, axis=2)
+        a_min_dist = np.min(a_dist_norms, axis=1)
+        closest_position = np.argmin(a_dist_norms, axis=1)
+        closest_ats = train_matches_sameClass[closest_position]
+        train_matches_otherClasses = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        b_dist = closest_ats[:, None] - train_matches_otherClasses
+        b_dist_norms = np.linalg.norm(b_dist, axis=2)
+        b_min_dist = np.min(b_dist_norms, axis=1)
 
         return a_min_dist, b_min_dist
