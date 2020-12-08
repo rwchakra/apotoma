@@ -1,8 +1,7 @@
 # TODO in this folder we will implement integration tests.
 #   Integration tests test larger workflows than unit tests and may thus take longer to implement.
 #   Integration tests are typically executed only when merging into main or selectively during development.
-
-
+import shutil
 import unittest
 
 import numpy as np
@@ -22,8 +21,11 @@ import os
 class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def setUp(self) -> None:
-        print(os.getcwd())
-        config = SurpriseAdequacyConfig()
+        path = '/tmp/data/'
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        os.mkdir(path)
+        config = SurpriseAdequacyConfig(saved_path=path)
         self.config = config
         self.model: tf.keras.Model = load_model('./tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()

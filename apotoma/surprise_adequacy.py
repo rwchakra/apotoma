@@ -38,10 +38,10 @@ class SurpriseAdequacyConfig:
         ValueError: If any of the config parameters takes an illegal value.
     """
 
+    saved_path: str
     is_classification: bool = True
     layer_names: List[str] = field(default_factory=lambda : ['activation_3'])
     ds_name: str = 'mnist'
-    saved_path: str = './tests/assets/'
     num_classes: Union[int, None] = 10
     min_var_threshold: float = 1e-5
     batch_size: int = 128
