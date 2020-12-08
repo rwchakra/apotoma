@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.models import load_model
 
-from apotoma.dissector import Dissector
+from dissector_temp_folder.dissector import Dissector
 
 import argparse
 
