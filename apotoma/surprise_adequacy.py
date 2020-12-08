@@ -122,7 +122,7 @@ class SurpriseAdequacy(ABC):
             if saved_target_path is not None:
                 np.save(saved_target_path[0], ats)
                 np.save(saved_target_path[1], pred)
-                print(f"Saved the [{ds_type}] ats and predictions to {saved_target_path[0]} and {saved_target_path[1]}")
+                print(f"[{ds_type}] Saved the ats and predictions to {saved_target_path[0]} and {saved_target_path[1]}")
 
             return ats, pred
 
@@ -284,7 +284,7 @@ class LSA(SurpriseAdequacy):
 
         return kdes, removed_rows
 
-    def _regression_kdes(self) -> Tuple[gaussian_kde, List[int]]:
+    def _regression_kdes(self) -> Tuple[List[gaussian_kde], List[int]]:
         removed_rows = []
         row_vectors = np.transpose(self.train_ats)
         for activation_node in range(row_vectors.shape[0]):
@@ -448,14 +448,14 @@ class DSA(SurpriseAdequacy):
     def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray):
 
         target_matches = target_ats[matches[0] + start]
-        train_matches_sameClass = self.train_ats[self.class_matrix[label]]
-        a_dist = target_matches[:, None] - train_matches_sameClass
+        train_matches_same_class = self.train_ats[self.class_matrix[label]]
+        a_dist = target_matches[:, None] - train_matches_same_class
         a_dist_norms = np.linalg.norm(a_dist, axis=2)
         a_min_dist = np.min(a_dist_norms, axis=1)
         closest_position = np.argmin(a_dist_norms, axis=1)
-        closest_ats = train_matches_sameClass[closest_position]
-        train_matches_otherClasses = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
-        b_dist = closest_ats[:, None] - train_matches_otherClasses
+        closest_ats = train_matches_same_class[closest_position]
+        train_matches_other_classes = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        b_dist = closest_ats[:, None] - train_matches_other_classes
         b_dist_norms = np.linalg.norm(b_dist, axis=2)
         b_min_dist = np.min(b_dist_norms, axis=1)
 
