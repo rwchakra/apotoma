@@ -35,10 +35,11 @@ class SurpriseAdequacyConfig:
     """
 
     saved_path: str
-    is_classification: bool = True
-    layer_names: List[str] = field(default_factory=lambda: ['activation_3'])
-    ds_name: str = 'mnist'
-    num_classes: Union[int, None] = 10
+    is_classification: bool = True  # TODO Remove these default values, they do not generalize
+    layer_names: List[str] = field(
+        default_factory=lambda: ['activation_3'])  # TODO Remove these default values, they do not generalize
+    ds_name: str = 'mnist'  # TODO Remove these default values, they do not generalize
+    num_classes: Union[int, None] = 10  # TODO Remove these default values, they do not generalize
     min_var_threshold: float = 1e-5
     batch_size: int = 128
 
@@ -49,13 +50,13 @@ class SurpriseAdequacyConfig:
         elif not self.is_classification and self.num_classes:
             raise ValueError(f"num_classes must be None (but was {self.num_classes}) "
                              "in SurpriseAdequacyConfig for classification problems")
-        elif self.num_classes < 0:
+        elif self.num_classes < 0 and self.is_classification:
             raise ValueError(f"num_classes must be positive but was {self.num_classes}) ")
         elif self.min_var_threshold < 0:
             raise ValueError(f"Variance threshold cannot be negative, but was {self.min_var_threshold}")
 
-        elif self.ds_name not in ['mnist', 'cifar-10']:
-            raise ValueError(f"Only Mnist and cifar-10 supported currently")
+        elif self.ds_name is None or self.ds_name == "":
+            raise ValueError(f"dataset name must not be None or empty")
 
         elif len(self.layer_names) == 0:
             raise ValueError(f"Layer list cannot be empty")
@@ -140,7 +141,7 @@ class SurpriseAdequacy(ABC):
 
             # Make the prediction on the original model.
             pred = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1),
-                                         axis=1)
+                             axis=1)
             # Get the activation traces of the inner layers of the model.
             layer_outputs: list = temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
 

@@ -19,7 +19,6 @@ class SmartDSA(DSA):
         self.number_of_samples = number_of_samples
 
     def _load_or_calc_train_ats(self, use_cache=False) -> None:
-
         smart_paths = self._get_saved_path(ds_type=f'smart_train_subset_{self.number_of_samples}')
         if use_cache and os.path.exists(smart_paths[0]):
             self.train_ats = np.load(smart_paths[0])
