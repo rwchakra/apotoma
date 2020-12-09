@@ -137,6 +137,7 @@ class SurpriseAdequacy(ABC):
 
         # Get the activation traces of the inner layers and the output of the final layer
         layer_outputs: List[np.ndarray] = temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
+        # Remove the (output layer) dnn outputs from the list and store them as separate result
         dnn_output = layer_outputs.pop()
 
         if self.config.is_classification:
