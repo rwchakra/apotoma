@@ -35,11 +35,10 @@ class SurpriseAdequacyConfig:
     """
 
     saved_path: str
-    is_classification: bool = True  # TODO Remove these default values, they do not generalize
-    layer_names: List[str] = field(
-        default_factory=lambda: ['activation_3'])  # TODO Remove these default values, they do not generalize
-    ds_name: str = 'mnist'  # TODO Remove these default values, they do not generalize
-    num_classes: Union[int, None] = 10  # TODO Remove these default values, they do not generalize
+    is_classification: bool
+    layer_names: List[str]
+    ds_name: str
+    num_classes: Union[int, None]
     min_var_threshold: float = 1e-5
     batch_size: int = 128
 
@@ -220,8 +219,7 @@ class SurpriseAdequacy(ABC):
                 self.class_matrix[label] = []
             self.class_matrix[label].append(i)
 
-    @staticmethod
-    def clear_cache(saved_path: str) -> None:
+    def clear_cache(self, saved_path: str) -> None:
         """
 
         Delete files of activation traces.
@@ -230,11 +228,16 @@ class SurpriseAdequacy(ABC):
             saved_path(str): Base directory path
 
         """
-        # TODO @Rwiddhi (issue 22) should we replace this with explicit names (the exact save train/target/test paths)?
-        #   Imaging people having other (non-sa related) npy files in the saved_path folder...
-        files = [f for f in os.listdir(saved_path) if f.endswith('.npy')]
-        for f in files:
-            os.remove(os.path.join(saved_path, f))
+        to_remove = ['train', 'test', 'target']
+        for f in to_remove:
+            path = self._get_saved_path(f)
+            os.remove(os.path.join(saved_path, path[0]))
+            os.remove(os.path.join(saved_path, path[1]))
+
+
+        # files = [f for f in os.listdir(saved_path) if f.endswith('.npy')]
+        # for f in files:
+        #     os.remove(os.path.join(saved_path, f))
 
 
 class LSA(SurpriseAdequacy):
@@ -277,11 +280,8 @@ class LSA(SurpriseAdequacy):
         else:
             kdes, removed_rows = self._regression_kdes()
 
-        # TODO @Rwiddhi (Issue 23) Please double-check.
-        #   These rows are representing nodes ('neurons in a layer'), right?
-        #   So this print statement (which I wrote) is correct?
-        print((f"Ignoring the activation traces of {len(removed_rows)} nodes "
-               f"as their variation is not high enough."))
+        print((f"Ignoring the activations of {len(removed_rows)} traces "
+               f"as their variance is not high enough."))
 
         return kdes, removed_rows
 
@@ -446,7 +446,7 @@ class DSA(SurpriseAdequacy):
 
         return dsa
 
-    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray):
+    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
         target_matches = target_ats[matches[0] + start]
         train_matches_same_class = self.train_ats[self.class_matrix[label]]
