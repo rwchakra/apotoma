@@ -301,7 +301,7 @@ class LSA(SurpriseAdequacy):
         else:
             raise ValueError(f"All ats were removed by threshold: ", self.config.min_var_threshold)
 
-    def _classification_kdes(self) -> Tuple[Dict[gaussian_kde], List[int]]:
+    def _classification_kdes(self) -> Tuple[Dict[int, gaussian_kde], List[int]]:
         removed_rows = []
         for label in range(self.config.num_classes):
             # Shape of (num_activation nodes x num_examples_by_label)
