@@ -22,7 +22,8 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         if os.path.exists(path):
             shutil.rmtree(path)
         os.mkdir(path)
-        self.config = SurpriseAdequacyConfig(saved_path=path)
+        self.config = SurpriseAdequacyConfig(saved_path=path, is_classification=True, layer_names=['activation_3'],
+                                             ds_name='mnist', num_classes=10, min_var_threshold=1e-5, batch_size=128)
         self.model: tf.keras.Model = load_model('./tests/assets/model_mnist.h5')
         (self.train_data, _), (self.test_data, y_test) = mnist.load_data()
         self.train_data = self.train_data.reshape(-1, 28, 28, 1)
