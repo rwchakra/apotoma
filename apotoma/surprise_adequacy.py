@@ -251,7 +251,9 @@ class LSA(SurpriseAdequacy):
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
 
         kdes, removed_rows = self._calc_kdes()
-        return self._calc_lsa(target_ats, target_pred, kdes, removed_rows, ds_type)
+
+        print(f"[{ds_type}] Calculating LSA")
+        return self._calc_lsa(target_ats, target_pred, kdes, removed_rows)
 
     def _calc_kdes(self) -> Tuple[dict, List[int]]:
         """
@@ -323,8 +325,7 @@ class LSA(SurpriseAdequacy):
                   target_ats: np.ndarray,
                   target_pred: np.ndarray,
                   kdes: {},
-                  removed_rows: list,
-                  ds_type: str) -> List[float]:
+                  removed_rows: list) -> List[float]:
         """
         Calculate scalar LSA value of target activation traces
 
@@ -339,7 +340,6 @@ class LSA(SurpriseAdequacy):
             lsa (float): List of scalar LSA values
 
         """
-        print(f"[{ds_type}] Calculating LSA")
 
         if self.config.is_classification:
             lsa: List[float] = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
