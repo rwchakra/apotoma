@@ -127,27 +127,20 @@ class SurpriseAdequacy(ABC):
             return ats, pred
 
     def _calculate_ats(self, dataset: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        output_layers = [self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
+        output_layers.append(self.model.output)
         temp_model = Model(
             inputs=self.model.input,
-            outputs=[self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
+            outputs=output_layers
         )
 
+        # Get the activation traces of the inner layers and the output of the final layer
+        layer_outputs: List[np.ndarray] = temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
+        # Remove the (output layer) dnn outputs from the list and store them as separate result
+        dnn_output = layer_outputs.pop()
+
         if self.config.is_classification:
-            # TODO Issue #20 (Michael) I think we can replace the following two predict statements to a single one
-            #   By adding the original output layer to the outputs of the temp model.
-            #   I will change that in a separate PR (and only after the tests are running),
-            #   To make sure I do not mess anything up
-
-            # Make the prediction on the original model.
-            pred = np.argmax(self.model.predict(dataset, batch_size=self.config.batch_size, verbose=1),
-                             axis=1)
-            # Get the activation traces of the inner layers of the model.
-            layer_outputs: list = temp_model.predict(dataset, batch_size=self.config.batch_size, verbose=1)
-
-            # If we only collect the ats of a sinlge layer, they are not represented as list
-            #   For compatibility, we pack them in a single-item list
-            if len(self.config.layer_names) == 1:
-                layer_outputs = [layer_outputs]
+            pred = np.argmax(dnn_output, axis=1)
 
             ats = None
             for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
