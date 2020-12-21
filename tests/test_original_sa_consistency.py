@@ -70,10 +70,17 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
     def test_lsa_is_consistent_with_original_implementation(self):
         our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
         our_lsa.prep()
-        test_lsa = our_lsa.calc(self.test_data, "test", use_cache=False)
+
+        our_lsa.train_ats = np.load("./tests/assets/original_mnist_train_activation_3_ats.npy")
+        our_lsa.train_pred = np.load("./tests/assets/original_mnist_train_pred.npy")
+        kdes, removed_rows = our_lsa._calc_kdes()
+        from_original_test_ats = np.load("./tests/assets/mnist_test_activation_3_ats.npy")
+        from_original_test_pred = np.load("./tests/assets/mnist_test_pred.npy")
+        # Method under test
+        our_lsa = our_lsa._calc_lsa(from_original_test_ats, from_original_test_pred, kdes, removed_rows, )
         original_lsa = np.load("./tests/assets/original_lsa_scores.npy")
 
-        np.testing.assert_almost_equal(actual=test_lsa,
+        np.testing.assert_almost_equal(actual=our_lsa,
                                        desired=original_lsa, decimal=2)
 
     def test_lsa_kdes(self):
