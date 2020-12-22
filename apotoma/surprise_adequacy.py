@@ -1,3 +1,4 @@
+import abc
 import os
 import pickle
 from abc import ABC
@@ -232,6 +233,17 @@ class SurpriseAdequacy(ABC):
         # for f in files:
         #     os.remove(os.path.join(saved_path, f))
 
+    @abc.abstractmethod
+    def calc(self, target_data: np.ndarray, use_cache: bool, ds_type: str) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Calculates prediction and novelty scores
+        :param target_data: a numpy array consisting of the data to be tested
+        :param use_cache: whether or not to use caching, i.e., re-use ats from previous cals to calc on *any* SA
+        :param ds_type: string, 'train' or 'test'
+        :return: A tuple of two one-dimensional arrays: surprises and predictions
+        """
+        pass
+
 
 class LSA(SurpriseAdequacy):
 
@@ -270,7 +282,7 @@ class LSA(SurpriseAdequacy):
             with open(rem_row_path, 'wb') as file:
                 pickle.dump(self.removed_rows, file=file)
 
-    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> List[float]:
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Return LSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -289,7 +301,8 @@ class LSA(SurpriseAdequacy):
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
 
         print(f"[{ds_type}] Calculating LSA")
-        return self._calc_lsa(target_ats, target_pred)
+        lsa_as_list = self._calc_lsa(target_ats, target_pred)
+        return np.array(lsa_as_list), target_pred
 
     def _calc_kdes(self) -> Tuple[dict, List[int]]:
         """
@@ -363,7 +376,7 @@ class LSA(SurpriseAdequacy):
 
     def _calc_lsa(self,
                   target_ats: np.ndarray,
-                  target_pred: np.ndarray) -> List[float]:
+                  target_pred: np.ndarray) -> np.ndarray:
         """
         Calculate scalar LSA value of target activation traces
 
@@ -380,29 +393,27 @@ class LSA(SurpriseAdequacy):
         """
 
         if self.config.is_classification:
-            lsa: List[float] = self._calc_classification_lsa(target_ats, target_pred)
+            lsa: np.ndarray = self._calc_classification_lsa(target_ats, target_pred)
         else:
-            lsa: List[float] = self._calc_regression_lsa(target_ats)
+            lsa: np.ndarray = self._calc_regression_lsa(target_ats)
         return lsa
 
-    def _calc_regression_lsa(self, target_ats: np.ndarray) -> List[float]:
-        lsa = []
+    def _calc_regression_lsa(self, target_ats: np.ndarray) -> np.ndarray:
         kde = self.kdes[0]
-        for at in tqdm(target_ats):
-            refined_at: np.ndarray = np.delete(at, self.removed_rows, axis=0)
-            lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
-        return lsa
+        refined_at: np.ndarray = np.delete(target_ats, self.removed_rows, axis=1)
+        return -kde.logpdf(np.transpose(refined_at))
 
     def _calc_classification_lsa(self,
                                  target_ats: np.ndarray,
-                                 target_pred: np.ndarray) -> List[float]:
-        lsa = []
-        for i, at in enumerate(tqdm(target_ats)):
-            label = target_pred[i]
+                                 target_pred: np.ndarray) -> np.ndarray:
+        result = np.empty(shape=target_pred.shape, dtype=float)
+        refined_ats = np.delete(target_ats, self.removed_rows, axis=1)
+        for label in self.class_matrix.keys():
+            for_label_indexes = target_pred == label
             kde = self.kdes[label]
-            refined_at: np.ndarray = np.delete(at, self.removed_rows, axis=0)
-            lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
-        return lsa
+            selected_ats = refined_ats[for_label_indexes]
+            result[for_label_indexes] = -kde.logpdf(np.transpose(selected_ats))
+        return result
 
 
 class DSA(SurpriseAdequacy):
@@ -414,7 +425,7 @@ class DSA(SurpriseAdequacy):
         super().__init__(model, train_data, config)
         self.dsa_batch_size = dsa_batch_size
 
-    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> np.ndarray:
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Return DSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -428,7 +439,7 @@ class DSA(SurpriseAdequacy):
 
         """
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
-        return self._calc_dsa(target_ats, target_pred, ds_type)
+        return self._calc_dsa(target_ats, target_pred, ds_type), target_pred
 
     def _calc_dsa(self, target_ats: np.ndarray, target_pred: np.ndarray, ds_type: str) -> np.ndarray:
 
