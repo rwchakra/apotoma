@@ -1,0 +1,5 @@
+BASE_FOLDER = "/experiments/sa_plusplus/"
+MODELS_BASE_FOLDER = BASE_FOLDER + "models/"
+RESULTS_BASE_FOLDER = BASE_FOLDER + "results/"
+
+DSA_BATCH_SIZE = 10000
