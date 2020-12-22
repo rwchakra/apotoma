@@ -1,4 +1,5 @@
 import abc
+from typing import Tuple
 
 import tensorflow as tf
 import numpy as np
@@ -18,7 +19,7 @@ class NoveltyScore(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def calc(self, target_data: np.ndarray, ds_name: str):
+    def calc(self, target_data: np.ndarray, ds_name: str) -> Tuple[np.ndarray, np.ndarray]:
         pass
 
     @abc.abstractmethod
