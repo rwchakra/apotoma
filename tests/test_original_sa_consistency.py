@@ -60,7 +60,7 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
     def test_dsa_is_consistent_with_original_implementation(self):
         our_dsa = DSA(model=self.model, train_data=self.train_data, config=self.config)
         our_dsa.prep()
-        test_dsa = our_dsa.calc(self.test_data, "test", use_cache=False)
+        test_dsa, predictions = our_dsa.calc(self.test_data, "test", use_cache=False)
 
         original_dsa = np.load("./tests/assets/original_dsa_scores.npy")
 
