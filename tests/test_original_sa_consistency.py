@@ -69,15 +69,17 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
     def test_lsa_is_consistent_with_original_implementation(self):
         our_lsa = LSA(model=self.model, train_data=self.train_data, config=self.config)
+        # train_ats, train_pred, kde, removed_rows will be overridden in next steps
         our_lsa.prep()
 
         our_lsa.train_ats = np.load("./tests/assets/original_mnist_train_activation_3_ats.npy")
         our_lsa.train_pred = np.load("./tests/assets/original_mnist_train_pred.npy")
-        kdes, removed_rows = our_lsa._calc_kdes()
+
+        our_lsa._load_or_create_likelyhood_estimator(use_cache=False)
         from_original_test_ats = np.load("./tests/assets/mnist_test_activation_3_ats.npy")
         from_original_test_pred = np.load("./tests/assets/mnist_test_pred.npy")
         # Method under test
-        our_lsa = our_lsa._calc_lsa(from_original_test_ats, from_original_test_pred, kdes, removed_rows, )
+        our_lsa = our_lsa._calc_lsa(from_original_test_ats, from_original_test_pred)
         original_lsa = np.load("./tests/assets/original_lsa_scores.npy")
 
         np.testing.assert_almost_equal(actual=our_lsa,

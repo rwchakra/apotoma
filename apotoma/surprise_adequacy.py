@@ -1,7 +1,7 @@
 import os
+import pickle
 from abc import ABC
 from dataclasses import dataclass
-from dataclasses import field
 from typing import Tuple, List, Union, Dict
 
 import numpy as np
@@ -193,20 +193,21 @@ class SurpriseAdequacy(ABC):
             self.train_ats, self.train_pred = self._load_or_calculate_ats(dataset=self.train_data, ds_type="train",
                                                                           use_cache=use_cache)
 
-    def prep(self) -> None:
+    def prep(self, use_cache: bool = False) -> None:
         """
 
         Prepare class matrix from training activation traces. Class matrix is a dictionary
         with keys as labels and values as lists of positions as predicted by model
 
         Args:
-            None
+            use_cache: bool If true, prepared values (activation traces, ...) will be
+            stored on the file system for later use.
 
         Returns:
-            None. class_matrix is init() variable of NoveltyScore
+            None.
 
         """
-        self._load_or_calc_train_ats()
+        self._load_or_calc_train_ats(use_cache=use_cache)
         for i, label in enumerate(self.train_pred):
             if label not in self.class_matrix:
                 self.class_matrix[label] = []
@@ -227,13 +228,47 @@ class SurpriseAdequacy(ABC):
             os.remove(os.path.join(saved_path, path[0]))
             os.remove(os.path.join(saved_path, path[1]))
 
-
         # files = [f for f in os.listdir(saved_path) if f.endswith('.npy')]
         # for f in files:
         #     os.remove(os.path.join(saved_path, f))
 
 
 class LSA(SurpriseAdequacy):
+
+    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: SurpriseAdequacyConfig) -> None:
+        super().__init__(model, train_data, config)
+        self.kdes = None
+        self.removed_rows = None
+
+    def prep(self, use_cache: bool = False) -> None:
+        super().prep()
+        self._load_or_create_likelyhood_estimator(use_cache=use_cache)
+
+    def _load_or_create_likelyhood_estimator(self, use_cache=False) -> None:
+        """Load or get actviation traces of training inputs
+
+        Args:
+            use_cache: To load stored files or not
+
+        Returns:
+            None. train_ats and train_pred are init() variables in super class NoveltyScore.
+
+        """
+
+        kdes_path = os.path.join(self.config.saved_path, self.config.ds_name + "kdes.npy")
+        rem_row_path = os.path.join(self.config.saved_path, self.config.ds_name + "remrows.npy")
+
+        if os.path.exists(kdes_path) and os.path.exists(rem_row_path) and use_cache:
+            with open(kdes_path, 'rb') as file:
+                self.kdes = pickle.load(file)
+            with open(rem_row_path, 'rb') as file:
+                self.removed_rows = pickle.load(file)
+        else:
+            self.kdes, self.removed_rows = self._calc_kdes()
+            with open(kdes_path, 'wb') as file:
+                pickle.dump(self.kdes, file=file)
+            with open(rem_row_path, 'wb') as file:
+                pickle.dump(self.removed_rows, file=file)
 
     def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> List[float]:
         """
@@ -248,12 +283,13 @@ class LSA(SurpriseAdequacy):
             lsa (float): List of scalar LSA values
 
         """
+        assert self.kdes is not None and self.removed_rows is not None, \
+            "LSA has not yet been prepared. Run lsa.prep()"
+
         target_ats, target_pred = self._load_or_calculate_ats(dataset=target_data, ds_type=ds_type, use_cache=use_cache)
 
-        kdes, removed_rows = self._calc_kdes()
-
         print(f"[{ds_type}] Calculating LSA")
-        return self._calc_lsa(target_ats, target_pred, kdes, removed_rows)
+        return self._calc_lsa(target_ats, target_pred)
 
     def _calc_kdes(self) -> Tuple[dict, List[int]]:
         """
@@ -290,7 +326,7 @@ class LSA(SurpriseAdequacy):
         refined_ats = np.delete(refined_ats, removed_rows, axis=0)
         if refined_ats.shape[0] != 0:
 
-            kdes = [gaussian_kde(refined_ats)]
+            kdes = [self._create_gaussian_kde(refined_ats)]
             return kdes, removed_rows
 
         else:
@@ -317,15 +353,17 @@ class LSA(SurpriseAdequacy):
                 print(f"Ats for label {label} were removed by threshold {self.config.min_var_threshold}")
                 break
 
-            kdes[label] = gaussian_kde(refined_ats)
+            kdes[label] = self._create_gaussian_kde(refined_ats)
 
         return kdes, removed_rows
 
+    @staticmethod
+    def _create_gaussian_kde(refined_ats):
+        return gaussian_kde(refined_ats)
+
     def _calc_lsa(self,
                   target_ats: np.ndarray,
-                  target_pred: np.ndarray,
-                  kdes: {},
-                  removed_rows: list) -> List[float]:
+                  target_pred: np.ndarray) -> List[float]:
         """
         Calculate scalar LSA value of target activation traces
 
@@ -342,32 +380,27 @@ class LSA(SurpriseAdequacy):
         """
 
         if self.config.is_classification:
-            lsa: List[float] = self._calc_classification_lsa(kdes, removed_rows, target_ats, target_pred)
+            lsa: List[float] = self._calc_classification_lsa(target_ats, target_pred)
         else:
-            lsa: List[float] = self._calc_regression_lsa(kdes, removed_rows, target_ats)
+            lsa: List[float] = self._calc_regression_lsa(target_ats)
         return lsa
 
-    @staticmethod
-    def _calc_regression_lsa(kdes: {},
-                             removed_rows: list,
-                             target_ats: np.ndarray) -> List[float]:
+    def _calc_regression_lsa(self, target_ats: np.ndarray) -> List[float]:
         lsa = []
-        kde = kdes[0]
+        kde = self.kdes[0]
         for at in tqdm(target_ats):
-            refined_at: np.ndarray = np.delete(at, removed_rows, axis=0)
+            refined_at: np.ndarray = np.delete(at, self.removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
-    @staticmethod
-    def _calc_classification_lsa(kdes: {},
-                                 removed_rows: list,
+    def _calc_classification_lsa(self,
                                  target_ats: np.ndarray,
                                  target_pred: np.ndarray) -> List[float]:
         lsa = []
         for i, at in enumerate(tqdm(target_ats)):
             label = target_pred[i]
-            kde = kdes[label]
-            refined_at: np.ndarray = np.delete(at, removed_rows, axis=0)
+            kde = self.kdes[label]
+            refined_at: np.ndarray = np.delete(at, self.removed_rows, axis=0)
             lsa.append(np.asscalar(-kde.logpdf(np.transpose(refined_at))))
         return lsa
 
@@ -439,7 +472,8 @@ class DSA(SurpriseAdequacy):
 
         return dsa
 
-    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray) -> \
+            Tuple[np.ndarray, np.ndarray]:
 
         target_matches = target_ats[matches[0] + start]
         train_matches_same_class = self.train_ats[self.class_matrix[label]]
