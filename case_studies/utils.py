@@ -1,8 +1,10 @@
+import os
+import pickle
 import time
-from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import numpy as np
+from dataclasses import dataclass
 from sklearn import metrics
 
 from apotoma.surprise_adequacy import LSA, DSA, SurpriseAdequacyConfig, SurpriseAdequacy
@@ -15,9 +17,11 @@ USE_CACHE = False
 class Result:
     def __init__(self,
                  name: str,
-                 prepare_time: float):
+                 prepare_time: float,
+                 approach_custom_info: Dict):
         self.name = name
         self.prepare_time = prepare_time
+        self.approach_custom_info = approach_custom_info
         self.evals: Dict[str, 'TestSetEval'] = dict()
 
 
@@ -32,22 +36,28 @@ class TestSetEval:
 def run_experiments(model,
                     sa_config: SurpriseAdequacyConfig,
                     train_x: np.ndarray,
-                    test_data: Dict[str, Tuple[np.ndarray, np.ndarray]]):
-    sas = dict()
+                    test_data: Dict[str, Tuple[np.ndarray, np.ndarray]]) -> List[Result]:
+
+    results = []
 
     for train_percent in range(5, 101, 5):
         num_samples = int(train_x.shape[0] * train_percent / 100)
         train_subset = train_x[:num_samples]
-        sas[f"dsa_{train_percent}"] = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
-        sas[f"lsa_{train_percent}"] = LSA(model=model, train_data=train_subset, config=sa_config)
+        # DSA
+        dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
+        dsa_custom_info = {"num_base_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
+        results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, test_data))
+        # LSA
+        lsa = LSA(model=model, train_data=train_subset, config=sa_config)
+        lsa_custom_info = {"num_samples": num_samples}
+        results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, test_data))
 
-    # TODO add our own implementations here
-
-    return [eval_for_sa(n, sa, test_data) for n, sa in sas.items()]
+    return results
 
 
 def eval_for_sa(sa_name,
                 sa: SurpriseAdequacy,
+                approach_custom_info: Dict,
                 test_data: Dict[str, Tuple[np.ndarray, np.ndarray]]) -> Result:
     # Prepare SA (offline)
     prep_start_time = time.time()
@@ -56,7 +66,7 @@ def eval_for_sa(sa_name,
     prep_time = time.time() - prep_start_time
 
     # Create result object
-    result = Result(name=sa_name, prepare_time=prep_time)
+    result = Result(name=sa_name, prepare_time=prep_time, approach_custom_info=approach_custom_info)
 
     for test_set_name, test_set in test_data.items():
         print(f"Evaluating {sa_name} with test set {test_set_name}")
@@ -73,3 +83,10 @@ def eval_for_sa(sa_name,
         result.evals[test_set_name] = TestSetEval(eval_time=calc_time, auc_roc=auc_roc, avg_pr_score=avg_pr)
 
     return result
+
+
+def save_results_to_fs(case_study: str, results: List[Result]) -> None:
+    os.makedirs(f"../results/{case_study}", exist_ok=True)
+    for res in results:
+        with open(f"results/{case_study}/{res.name}.pickle", "wb+") as f:
+            pickle.dump(res, file=f)

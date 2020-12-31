@@ -37,17 +37,11 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
     def gpu_memory_limit(cls) -> int:
         return 1000
 
-
 def run_experiments(model_id, model):
     x_train, _, x_test, y_test = _get_dataset()
 
-    fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1))
-    attack = foolbox.attacks.LinfFastGradientAttack()
     # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
-    epsilons = [0.5]
-    attack_x = tf.convert_to_tensor(x_test)
-    attack_y = tf.convert_to_tensor(y_test, dtype=tf.int32)
-    advs, _, success = attack(fmodel, attack_x, attack_y, epsilons=epsilons)
+    advs = get_adv_data(model, x_test, y_test, epsilons=[0.5])
     test_data = {
         'nominal': (x_test, y_test),
         #TODO change once doing multiple epsilons
@@ -62,8 +56,17 @@ def run_experiments(model_id, model):
         ds_name=f"mnist_{model_id}",
         num_classes=10)
     results = utils.run_experiments(model=model, train_x=x_train, test_data=test_data, sa_config=sa_config)
+    utils.save_results_to_fs(results=results, case_study="mnist")
     shutil.rmtree(temp_folder)
-    print(results) # TODO Save results to fs
+
+
+def get_adv_data(model, x_test, y_test, epsilons):
+    fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1))
+    attack = foolbox.attacks.LinfFastGradientAttack()
+    attack_x = tf.convert_to_tensor(x_test)
+    attack_y = tf.convert_to_tensor(y_test, dtype=tf.int32)
+    advs, _, success = attack(fmodel, attack_x, attack_y, epsilons=epsilons)
+    return advs
 
 
 def train_model(model_id):

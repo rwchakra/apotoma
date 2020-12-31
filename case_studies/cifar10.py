@@ -51,7 +51,7 @@ def train_model(model_id):
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(128, activation='relu'))
     model.add(tf.keras.layers.Dropout(0.2))
-    model.add(tf.keras.layers.Dense(64, activation='relu', name="for_sa"))
+    model.add(tf.keras.layers.Dense(32, activation='relu', name="for_sa"))
     model.add(tf.keras.layers.Dense(10, activation='softmax'))
 
     opt = tf.keras.optimizers.SGD(lr=0.001, momentum=0.9)
@@ -65,6 +65,7 @@ def train_model(model_id):
     # Of course, for higher accuracy, you should use more.
     model.fit(x_train, y_train, batch_size=32, epochs=100, validation_split=0.1,
               callbacks=[tf.keras.callbacks.EarlyStopping(patience=2)])
+
 
     return model, "history_not_returned"
 
