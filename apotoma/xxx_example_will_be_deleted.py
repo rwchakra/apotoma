@@ -57,7 +57,7 @@ if __name__ == '__main__':
     else:
         novelty_score = LSA(train_data=x_train, model=model, args=args)'''
 
-    novelty_score = SmartDSA(model=model, config=config, train_data=x_train, number_of_samples=100)
+    novelty_score = SmartDSA(model=model, config=config, train_data=x_train)
 
 
 
