@@ -13,7 +13,7 @@ class SmartDSA(DSA):
                  model: tf.keras.Model,
                  train_data: np.ndarray,
                  config: SurpriseAdequacyConfig,
-                 threshold: float,
+                 threshold=0.05,
                  dsa_batch_size=500) -> None:
         super().__init__(model, train_data, config, dsa_batch_size)
         self.threshold = threshold
