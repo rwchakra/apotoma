@@ -49,10 +49,10 @@ def train_model(model_id):
     model.add(tf.keras.layers.MaxPooling2D((2, 2)))
     model.add(tf.keras.layers.Dropout(0.2))
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(128, activation='relu'))
+    model.add(tf.keras.layers.Dense(128, activation='relu', name="2nd_last_dense"))
     model.add(tf.keras.layers.Dropout(0.2))
-    model.add(tf.keras.layers.Dense(32, activation='relu', name="for_sa"))
-    model.add(tf.keras.layers.Dense(10, activation='softmax'))
+    model.add(tf.keras.layers.Dense(32, activation='relu', name="last_dense"))
+    model.add(tf.keras.layers.Dense(10, activation='softmax', name="sm_output"))
 
     opt = tf.keras.optimizers.SGD(lr=0.001, momentum=0.9)
     model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])

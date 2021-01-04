@@ -12,8 +12,7 @@ import uncertainty_wizard as uwiz
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
-# TODO Increase
-NUM_MODELS = 1
+NUM_MODELS = 20
 
 
 class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
@@ -52,10 +51,13 @@ def run_experiments(model_id, model):
     sa_config = SurpriseAdequacyConfig(
         saved_path=temp_folder,
         is_classification=True,
-        layer_names=["for_sa"],
+        layer_names=["sm_output"],
         ds_name=f"mnist_{model_id}",
         num_classes=10)
-    results = utils.run_experiments(model=model, train_x=x_train, test_data=test_data, sa_config=sa_config)
+    results = utils.run_experiments(model=model,
+                                    train_x=x_train,
+                                    test_data=test_data,
+                                    sa_config=sa_config)
     utils.save_results_to_fs(results=results, case_study="mnist")
     shutil.rmtree(temp_folder)
 
@@ -85,8 +87,8 @@ def train_model(model_id):
             tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
             tf.keras.layers.Dropout(0.5),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(10, name="for_sa"),
-            tf.keras.layers.Dense(10, activation="softmax"),
+            tf.keras.layers.Dense(10, name="last_dense"),
+            tf.keras.layers.Dense(10, activation="softmax", name="sm_output"),
         ]
     )
 
@@ -120,5 +122,5 @@ if __name__ == '__main__':
     # )
 
     model_collection.consume(
-        run_experiments, num_processes=0
+        run_experiments, num_processes=20
     )

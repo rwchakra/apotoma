@@ -7,7 +7,7 @@ import tensorflow as tf
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
 
 
-class SmartDSA(DSA):
+class DiffOfNormsSelectiveDSA(DSA):
 
     def __init__(self,
                  model: tf.keras.Model,
