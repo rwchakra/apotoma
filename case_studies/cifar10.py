@@ -37,8 +37,6 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
 
 
 def train_model(model_id):
-    import tensorflow as tf
-
     model = tf.keras.models.Sequential()
     model.add(tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', padding='same',
                                      input_shape=(32, 32, 3)))
@@ -85,19 +83,20 @@ def _get_dataset():
 
 
 def run_experiments(model_id, model):
+    print(f"Starting with model id {model_id}")
     x_train, _, x_test, y_test = _get_dataset()
 
     # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
     advs = get_adv_data(model, x_test, y_test, epsilons=[0.5])
-    corrupted = np.load(str(os.path.join(config.MODELS_BASE_FOLDER, "datasets", "cifar10_corrupted.npy")))
+    corrupted = np.load(str(os.path.join(config.BASE_FOLDER, "datasets", "cifar10_corrupted.npy")))
     test_data = {
         'nominal': (x_test, y_test),
+        'corrupted_sev_5': (corrupted[:, 4] / 255., y_test),
         # TODO change once doing multiple epsilons
-        'corrupted_sev_5': corrupted[:, 4],
         'adv_fga_0.5': (advs, y_test)
     }
     temp_folder = "/tmp/" + str(time.time())
-    os.mkdir(temp_folder)
+    os.makedirs(temp_folder, exist_ok=True)
     sa_config = SurpriseAdequacyConfig(
         saved_path=temp_folder,
         is_classification=True,
@@ -113,7 +112,7 @@ def run_experiments(model_id, model):
 
 
 def get_adv_data(model, x_test, y_test, epsilons):
-    badge_size = 100
+    badge_size = 500
     x_test = np.reshape(x_test, (-1, badge_size, 32, 32, 3))
     y_test = np.reshape(y_test, (-1, badge_size))
 
@@ -124,8 +123,9 @@ def get_adv_data(model, x_test, y_test, epsilons):
         attack_x = tf.convert_to_tensor(x_test[i])
         attack_y = tf.convert_to_tensor(y_test[i], dtype=tf.int32)
         advs, _, success = attack(fmodel, attack_x, attack_y, epsilons=epsilons)
-        adv.append(advs)
-    return np.concatenate(adv).reshape((-1, 28, 28, 1))
+        adv.append(advs[0].numpy())
+        print(f"Completed foolbox batch {i}")
+    return np.concatenate(adv).reshape((-1, 32, 32, 3))
 
 
 if __name__ == '__main__':
@@ -134,7 +134,8 @@ if __name__ == '__main__':
 
     model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
                                                 model_save_path=config.MODELS_BASE_FOLDER + "cifar10",
-                                                delete_existing=False)
+                                                delete_existing=False,
+                                                expect_model=True)
     # histories = model_collection.create(
     #     train_model, num_processes=6, context=TrainContext
     # )
