@@ -31,6 +31,7 @@ class Result:
 class TestSetEval:
     eval_time: float
     # avg_pr_score: float
+    accuracy: float
     ood_auc_roc: float
     num_nominal_samples: int
     num_outlier_samples: int
@@ -72,7 +73,7 @@ def run_experiments(model,
 
     # TODO We need to come up with dynamic way to calculate these
     for diff_threshold in range(10, 90, 10):
-        diff_threshold /= 100  # int percentage to float ratio
+        diff_threshold /= 1000  # int percentage to float ratio
         dsa = NormOfDiffsSelectiveDSA(model=model,
                                       train_data=train_x,
                                       config=sa_config,
@@ -115,7 +116,8 @@ def eval_for_sa(sa_name,
         calc_time = time.time() - calc_start
 
         # Used for (outlier-only) misclassification prediction
-        # is_misclassified = test_set[1] != pred
+        is_misclassified = test_set[1] != pred
+        accuracy = (x_test.shape[0] - np.sum(is_misclassified)) / x_test.shape[0]
         # auc_roc = metrics.roc_auc_score(is_misclassified, surp)
         # avg_pr = metrics.average_precision_score(is_misclassified, surp)
 
@@ -126,14 +128,15 @@ def eval_for_sa(sa_name,
 
         result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
                                                   ood_auc_roc=ood_auc_roc,
-                                                  num_nominal_samples=nom_surp.shape[0],
-                                                  num_outlier_samples=surp.shape[0])
+                                                  accuracy = accuracy,
+                                                  num_nominal_samples=nominal_data[0].shape[0],
+                                                  num_outlier_samples=x_test.shape[0])
 
     return result
 
 
-def save_results_to_fs(case_study: str, results: List[Result]) -> None:
-    os.makedirs(f"../results/{case_study}", exist_ok=True)
+def save_results_to_fs(case_study: str, results: List[Result], model_id=int) -> None:
     for res in results:
-        with open(f"results/{case_study}/{res.name}.pickle", "wb+") as f:
+        os.makedirs(f"../results/{case_study}/{res.name}", exist_ok=True)
+        with open(f"../results/{case_study}/{res.name}/model_{model_id}.pickle", "wb+") as f:
             pickle.dump(res, file=f)
