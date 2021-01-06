@@ -148,12 +148,15 @@ class SurpriseAdequacy(ABC):
                 print("Layer: " + layer_name)
                 if layer_output[0].ndim == 3:
                     # For convolutional layers, taken over from original SA implementation
-                    layer_matrix = np.array(
-                        # TODO @Rwiddhi (issue 21): Here we have a loop over the dataset.
-                        #   Check if this can be replaced using some numpy fun.
-                        map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
-                            [layer_output[i] for i in range(len(dataset))])
-                    )
+
+                    layer_matrix = np.mean(layer_output, axis=(2,1))
+                    # for i in range(len(dataset)):
+                    #     layer_matrix[i] = np.mean(layer_output[i], axis=(1,0))
+                    #
+                    # layer_matrix = np.array(
+                    #     map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
+                    #         [layer_output[i] for i in range(len(dataset))])
+                    # )
                 else:
                     layer_matrix = np.array(layer_output)
 
