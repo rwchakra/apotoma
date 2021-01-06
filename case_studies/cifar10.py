@@ -89,9 +89,11 @@ def run_experiments(model_id, model):
 
     # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
     advs = get_adv_data(model, x_test, y_test, epsilons=[0.5])
+    corrupted = np.load(str(os.path.join(config.MODELS_BASE_FOLDER, "datasets", "cifar10_corrupted.npy")))
     test_data = {
         'nominal': (x_test, y_test),
         # TODO change once doing multiple epsilons
+        'corrupted_sev_5': corrupted[:, 4],
         'adv_fga_0.5': (advs, y_test)
     }
     temp_folder = "/tmp/" + str(time.time())
