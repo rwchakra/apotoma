@@ -451,26 +451,24 @@ corruptions = ['Gaussian Noise', 'Shot Noise', 'Impulse Noise','Defocus Blur',
                'Brightness', 'Contrast', 'Elastic', 'Pixelate', 'JPEG']
 
 cifar_c, labels = [], []
-all_corruptions = {}
+all_corruptions = []
 all_labels = {}
+c = 0
+severity_c = np.empty(shape=(10000, 5, 32, 32, 3), dtype=np.uint8)
 for img, label in zip(test_data.data, test_data.targets):
+
     method_name = random.choice(corruptions)
     print('Creating images for the corruption', method_name)
-
-    if method_name not in all_corruptions.keys() and method_name not in all_labels.keys():
-        all_corruptions[method_name] = []
-        all_labels[method_name] = []
 
     for severity in range(1, 6):
         corruption = lambda clean_img: d[method_name](clean_img, severity)
 
-        cifar_c.append(np.uint8(corruption(convert_img(img))))
-    all_corruptions[method_name].extend(np.array(cifar_c).astype(np.uint8))
-    all_labels[method_name].append(label)
+        severity_c[c, severity - 1] = np.uint8(corruption(convert_img(img)))
 
 
-    np.save('./cifar10-c/corrupted_images.npy',
-            all_corruptions)
+    all_corruptions.append(method_name)
 
-    np.save('./cifar10-c/labels.npy',
-            all_labels)
+np.save('./cifar10-c/corrupted_images.npy', severity_c)
+np.save('./cifar10-c/all_corruptions.npy', all_corruptions)
+
+assert severity_c.shape == (10000, 5, 32, 32, 3)
