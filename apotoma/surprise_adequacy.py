@@ -127,6 +127,10 @@ class SurpriseAdequacy(ABC):
 
             return ats, pred
 
+    @classmethod
+    def _output_dim_reduction(cls, layer_output):
+        return np.mean(layer_output, axis=(2, 1))
+
     def _calculate_ats(self, dataset: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         output_layers = [self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
         output_layers.append(self.model.output)
@@ -147,16 +151,8 @@ class SurpriseAdequacy(ABC):
             for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
                 print("Layer: " + layer_name)
                 if layer_output[0].ndim == 3:
-                    # For convolutional layers, taken over from original SA implementation
-
-                    layer_matrix = np.mean(layer_output, axis=(2,1))
-                    # for i in range(len(dataset)):
-                    #     layer_matrix[i] = np.mean(layer_output[i], axis=(1,0))
-                    #
-                    # layer_matrix = np.array(
-                    #     map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
-                    #         [layer_output[i] for i in range(len(dataset))])
-                    # )
+                    # For convolutional layers
+                    layer_matrix = self._output_dim_reduction(layer_output)
                 else:
                     layer_matrix = np.array(layer_output)
 

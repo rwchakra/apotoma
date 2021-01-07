@@ -99,67 +99,26 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
         else:
             self.assertEqual(np.array(test_rm_rows).dtype, int)
 
-# if __name__=='__main__':
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument("--d", "-d", help="Dataset", type=str, default="mnist")
-#     parser.add_argument(
-#         "--lsa", "-lsa", help="Likelihood-based Surprise Adequacy", action="store_true"
-#     )
-#     parser.add_argument(
-#         "--dsa", "-dsa", help="Distance-based Surprise Adequacy", action="store_true"
-#     )
-#     parser.add_argument(
-#         "--target",
-#         "-target",
-#         help="Target input set (test or adversarial set)",
-#         type=str,
-#         default="fgsm",
-#     )
-#     parser.add_argument(
-#         "--save_path", "-save_path", help="Save path", type=str, default="./tmp/"
-#     )
-#     parser.add_argument(
-#         "--batch_size", "-batch_size", help="Batch size", type=int, default=128
-#     )
-#     parser.add_argument(
-#         "--var_threshold",
-#         "-var_threshold",
-#         help="Variance threshold",
-#         type=float,
-#         default=1e-5,
-#     )
-#     parser.add_argument(
-#         "--upper_bound", "-upper_bound", help="Upper bound", type=int, default=2000
-#     )
-#     parser.add_argument(
-#         "--n_bucket",
-#         "-n_bucket",
-#         help="The number of buckets for coverage",
-#         type=int,
-#         default=1000,
-#     )
-#     parser.add_argument(
-#         "--num_classes",
-#         "-num_classes",
-#         help="The number of classes",
-#         type=int,
-#         default=10,
-#     )
-#     parser.add_argument(
-#         "--is_classification",
-#         "-is_classification",
-#         help="Is classification task",
-#         type=bool,
-#         default=True,
-#     )
-#     parser.add_argument(
-#         "--implementation",
-#         "-implementation",
-#         help="SA Implementation Type [fast_sa or benchmark]",
-#         type=str,
-#         default="fast_dsa",
-#     )
-#     config = parser.parse_args()
-#     test_obj = TestSurpriseAdequacyConsistency()
-#
-#
+    def test_output_dim_reduction(self):
+
+        def original_implementation(layer_output):
+            # This is the original dimensionality reduction implemented by Kim et al
+            # (only thing we replaced is len(dataset) with layer_output.shape[0]
+            return np.array(map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
+                                [layer_output[i] for i in range(layer_output.shape[0])]))
+
+        layer_outputs_1 = np.zeros(shape=(100, 25, 25, 3))
+        expected = original_implementation(layer_outputs_1)
+        actual = LSA._output_dim_reduction(layer_outputs_1)
+        np.testing.assert_almost_equal(expected, actual, 0.00001)
+
+        np.random.seed(0)
+        layer_outputs_2 = np.random.rand(shape=(100, 20, 20, 3))
+        expected = original_implementation(layer_outputs_2)
+        actual = LSA._output_dim_reduction(layer_outputs_2)
+        np.testing.assert_almost_equal(expected, actual, 0.00001)
+
+        layer_outputs_3 = np.random.rand(shape=(100, 10, 11, 12, 13))
+        expected = original_implementation(layer_outputs_3)
+        actual = LSA._output_dim_reduction(layer_outputs_3)
+        np.testing.assert_almost_equal(expected, actual, 0.00001)
