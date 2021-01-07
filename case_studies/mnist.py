@@ -6,11 +6,12 @@ from typing import Dict
 import foolbox
 import numpy as np
 import uncertainty_wizard as uwiz
+import tensorflow as tf
 
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
-NUM_MODELS = 2
+NUM_MODELS = 100
 
 
 class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
@@ -36,6 +37,9 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
 
 
 def run_experiments(model_id, model):
+    # TODO return this
+    if model_id < 2:
+        return
     x_train, _, x_test, y_test = _get_dataset()
 
     # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
@@ -61,8 +65,6 @@ def run_experiments(model_id, model):
 
 
 def get_adv_data(model, x_test, y_test, epsilons):
-    import tensorflow as tf
-
     badge_size = 100
     x_test = np.reshape(x_test, (-1, badge_size, 28, 28, 1))
     y_test = np.reshape(y_test, (-1, badge_size))
@@ -133,5 +135,4 @@ if __name__ == '__main__':
     model_collection.consume(
         run_experiments, num_processes=0,
         # context=TrainContext
-
     )
