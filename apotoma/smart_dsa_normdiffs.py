@@ -1,13 +1,10 @@
 import os
-from typing import Tuple
-
 import numpy as np
 import tensorflow as tf
 
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
 
-
-class SmartDSA(DSA):
+class NormOfDiffsSelectiveDSA(DSA):
 
     def __init__(self,
                  model: tf.keras.Model,
@@ -47,23 +44,16 @@ class SmartDSA(DSA):
             data_label = all_train_ats[np.where(all_train_pred == label)]
             available_indices = np.where(all_train_pred == label)[0]
 
-
             indexes = np.arange(available_indices.shape[0])
             is_available = np.ones(shape=available_indices.shape[0], dtype=bool)
 
             # This index used in the loop indicates the latest element selected to be added to chosen items
             current_idx = 0
 
-            # for logging only
-            num_steps = 0
-
             while True:
-                num_steps += 1
                 # Get all indexes (higher than current_index) which are still available and the corresponding ats
                 candidate_indexes = np.argwhere((indexes > current_idx) & is_available).flatten()
                 candidates = data_label[candidate_indexes]
-                print(f"candidates shape = {candidates.shape}")
-
 
                 diffs = np.linalg.norm(candidates - data_label[current_idx], axis=1)
                 assert diffs.ndim == 1
@@ -77,7 +67,6 @@ class SmartDSA(DSA):
                 # Select the next available candidate as current_idx (i.e., use select it for use in dsa),
                 #   or break if none available
                 if np.count_nonzero(is_available[current_idx:]) > 1:
-                    print(len(is_available[current_idx:]))
                     current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
                 else:
                     # np.argmax did not find anything
@@ -87,4 +76,5 @@ class SmartDSA(DSA):
             new_class_matrix_norms_vec[label] = list(available_indices[selected_indexes])
 
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
+
         self.class_matrix = new_class_matrix_norms_vec

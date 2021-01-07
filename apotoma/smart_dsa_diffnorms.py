@@ -1,13 +1,11 @@
 import os
-from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
 
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
 
-
-class SmartDSA(DSA):
+class DiffOfNormsSelectiveDSA(DSA):
 
     def __init__(self,
                  model: tf.keras.Model,
@@ -53,19 +51,13 @@ class SmartDSA(DSA):
             # This index used in the loop indicates the latest element selected to be added to chosen items
             current_idx = 0
 
-            # for logging only
-            num_steps = 0
-
             while True:
-                num_steps += 1
                 # Get all indexes (higher than current_index) which are still available and the corresponding ats
                 candidate_indexes = np.argwhere((indexes > current_idx) & is_available).flatten()
                 candidates = norms[candidate_indexes]
-                print(f"candidates shape = {candidates.shape}")
 
-                # Calculate the diff between norms (only this has to be slightly changed for norm of diffs impl)
+                # Calculate the diff between norms
                 diffs = np.abs(candidates - norms[current_idx])
-                assert diffs.ndim == 1
 
                 # Identify candidates which are too similar to currently added element (current_idx)
                 # and set their availability to false
@@ -76,7 +68,7 @@ class SmartDSA(DSA):
                 # Select the next available candidate as current_idx (i.e., use select it for use in dsa),
                 #   or break if none available
                 if np.count_nonzero(is_available[current_idx:]) > 1:
-                    print(len(is_available[current_idx:]))
+
                     current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
                 else:
                     # np.argmax did not find anything
