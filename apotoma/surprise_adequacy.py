@@ -2,11 +2,11 @@ import abc
 import os
 import pickle
 from abc import ABC
-from dataclasses import dataclass
 from typing import Tuple, List, Union, Dict
 
 import numpy as np
 import tensorflow as tf
+from dataclasses import dataclass
 from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
@@ -129,7 +129,7 @@ class SurpriseAdequacy(ABC):
 
     @classmethod
     def _output_dim_reduction(cls, layer_output):
-        return np.mean(layer_output, axis=(2, 1))
+        return np.mean(layer_output, axis=tuple(range(1, layer_output.ndim - 1)))
 
     def _calculate_ats(self, dataset: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         output_layers = [self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]

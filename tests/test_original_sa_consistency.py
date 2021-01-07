@@ -103,22 +103,25 @@ class TestSurpriseAdequacyConsistency(unittest.TestCase):
 
         def original_implementation(layer_output):
             # This is the original dimensionality reduction implemented by Kim et al
-            # (only thing we replaced is len(dataset) with layer_output.shape[0]
-            return np.array(map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
-                                [layer_output[i] for i in range(layer_output.shape[0])]))
+            # (only thing we replaced is len(dataset) with layer_output.shape[0] and the array conversion)
+            mapper = map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
+                         [layer_output[i] for i in range(layer_output.shape[0])])
+            return np.array([x for x in mapper])
 
         layer_outputs_1 = np.zeros(shape=(100, 25, 25, 3))
         expected = original_implementation(layer_outputs_1)
         actual = LSA._output_dim_reduction(layer_outputs_1)
-        np.testing.assert_almost_equal(expected, actual, 0.00001)
+        np.testing.assert_almost_equal(expected, actual)
 
         np.random.seed(0)
-        layer_outputs_2 = np.random.rand(shape=(100, 20, 20, 3))
+        shape = (100, 20, 20, 3)
+        layer_outputs_2 = np.random.rand(np.prod(shape)).reshape(shape)
         expected = original_implementation(layer_outputs_2)
         actual = LSA._output_dim_reduction(layer_outputs_2)
-        np.testing.assert_almost_equal(expected, actual, 0.00001)
+        np.testing.assert_almost_equal(expected, actual)
 
-        layer_outputs_3 = np.random.rand(shape=(100, 10, 11, 12, 13))
+        shape = (100, 10, 11, 12, 13)
+        layer_outputs_3 = np.random.rand(np.prod(shape)).reshape(shape)
         expected = original_implementation(layer_outputs_3)
         actual = LSA._output_dim_reduction(layer_outputs_3)
-        np.testing.assert_almost_equal(expected, actual, 0.00001)
+        np.testing.assert_almost_equal(expected, actual)
