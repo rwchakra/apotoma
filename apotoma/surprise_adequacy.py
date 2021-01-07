@@ -150,8 +150,8 @@ class SurpriseAdequacy(ABC):
             ats = None
             for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
                 print("Layer: " + layer_name)
-                if layer_output[0].ndim == 3:
-                    # For convolutional layers
+                if layer_output[0].ndim >= 3:
+                    # (primarily for convolutional layers - note that kim et al used ndim==3)
                     layer_matrix = self._output_dim_reduction(layer_output)
                 else:
                     layer_matrix = np.array(layer_output)
