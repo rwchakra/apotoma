@@ -1,14 +1,12 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
-import sys
 
-sys.path.append('/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/results/mnist')
+df = os.listdir('./mnist')[1]
 
-file_dsa = os.listdir('./mnist')[1]
+with open('./mnist/'+df, 'rb') as f:
+    data = pickle.load(f)
 
-with open('./mnist/'+file_dsa, 'rb') as f:
-    data_dsa = pickle.load(f)
-
-print(data_dsa)
+auc_score = data.evals['adv_fga_0.5'].ood_auc_roc
+time = data.evals['adv_fga_0.5'].eval_time
+print(auc_score, time)

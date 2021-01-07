@@ -68,7 +68,6 @@ class DiffOfNormsSelectiveDSA(DSA):
                 # Select the next available candidate as current_idx (i.e., use select it for use in dsa),
                 #   or break if none available
                 if np.count_nonzero(is_available[current_idx:]) > 1:
-
                     current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
                 else:
                     # np.argmax did not find anything
