@@ -1,10 +1,8 @@
 import os
-
 import numpy as np
 import tensorflow as tf
 
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
-
 
 class NormOfDiffsSelectiveDSA(DSA):
 
@@ -78,4 +76,5 @@ class NormOfDiffsSelectiveDSA(DSA):
             new_class_matrix_norms_vec[label] = list(available_indices[selected_indexes])
 
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
+
         self.class_matrix = new_class_matrix_norms_vec
