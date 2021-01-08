@@ -1,9 +1,11 @@
 import os
+from typing import List
 
 import numpy as np
 import tensorflow as tf
 
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
+
 
 class DiffOfNormsSelectiveDSA(DSA):
 
@@ -41,9 +43,9 @@ class DiffOfNormsSelectiveDSA(DSA):
         new_class_matrix_norms_vec = {}
         for label in range(self.config.num_classes):
 
-            data_label = all_train_ats[np.where(all_train_pred == label)]
+            available_indices = np.where(all_train_pred == label)
+            data_label = all_train_ats[available_indices]
             norms = np.linalg.norm(data_label, axis=1)  # Norms
-            available_indices = np.where(all_train_pred == label)[0]
 
             indexes = np.arange(norms.shape[0])
             is_available = np.ones(shape=norms.shape[0], dtype=bool)
@@ -68,14 +70,36 @@ class DiffOfNormsSelectiveDSA(DSA):
                 # Select the next available candidate as current_idx (i.e., use select it for use in dsa),
                 #   or break if none available
                 if np.count_nonzero(is_available[current_idx:]) > 1:
-
                     current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
                 else:
-                    # np.argmax did not find anything
                     break
 
             selected_indexes = np.nonzero(is_available)[0]
-            new_class_matrix_norms_vec[label] = list(available_indices[selected_indexes])
+            new_class_matrix_norms_vec[label] = list(available_indices[0][selected_indexes])
 
         self.class_matrix = new_class_matrix_norms_vec
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
+
+    def sample_diff_distributions(self, x_subarray: np.ndarray) -> np.ndarray:
+        """
+        Calculates all differences between the samples passed in the subarray.
+        This can be used to guess thresholds for the algorithm.
+        The threshold passed when creating this DSA instance is ignored.
+        :param x_subarray: the subset of the train data (or any other data) for which to calc the differences
+        :return: Sorted one-dimensional array of differences
+        """
+        ats, pred = self._calculate_ats(x_subarray)
+        norms = np.linalg.norm(ats, axis=1)  # Norms
+        unique_pred = np.unique(pred)
+        differences = []
+        for label in unique_pred:
+            label_indices = np.where(pred == label)
+            values = norms[label_indices]
+            assert values.ndim == 1
+            diff_matrix = np.abs(values - np.expand_dims(values, 1))
+            indeces_under_diagonal = np.tril_indices(diff_matrix.shape[0], -1)
+            diffs = diff_matrix[indeces_under_diagonal]
+            differences += list(diffs)
+        return np.array(sorted(differences))
+
+

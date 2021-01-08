@@ -2,11 +2,11 @@ import abc
 import os
 import pickle
 from abc import ABC
-from dataclasses import dataclass
 from typing import Tuple, List, Union, Dict
 
 import numpy as np
 import tensorflow as tf
+from dataclasses import dataclass
 from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
@@ -127,6 +127,10 @@ class SurpriseAdequacy(ABC):
 
             return ats, pred
 
+    @classmethod
+    def _output_dim_reduction(cls, layer_output):
+        return np.mean(layer_output, axis=tuple(range(1, layer_output.ndim - 1)))
+
     def _calculate_ats(self, dataset: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         output_layers = [self.model.get_layer(layer_name).output for layer_name in self.config.layer_names]
         output_layers.append(self.model.output)
@@ -146,14 +150,9 @@ class SurpriseAdequacy(ABC):
             ats = None
             for layer_name, layer_output in zip(self.config.layer_names, layer_outputs):
                 print("Layer: " + layer_name)
-                if layer_output[0].ndim == 3:
-                    # For convolutional layers, taken over from original SA implementation
-                    layer_matrix = np.array(
-                        # TODO @Rwiddhi (issue 21): Here we have a loop over the dataset.
-                        #   Check if this can be replaced using some numpy fun.
-                        map(lambda x: [np.mean(x[..., j]) for j in range(x.shape[-1])],
-                            [layer_output[i] for i in range(len(dataset))])
-                    )
+                if layer_output[0].ndim >= 3:
+                    # (primarily for convolutional layers - note that kim et al used ndim==3)
+                    layer_matrix = self._output_dim_reduction(layer_output)
                 else:
                     layer_matrix = np.array(layer_output)
 
