@@ -38,6 +38,24 @@ class TestSetEval:
     # TODO maybe we can add a tpr at fpr.05 or something as well
 
 
+def _get_thresholds(smart_class, model, train_x, sa_config):
+    temp_dsa = smart_class(model=model,
+                           train_data=train_x,
+                           config=sa_config,
+                           dsa_batch_size=config.DSA_BATCH_SIZE,
+                           threshold=0.1  # Threshold does not matter here
+                           )
+    num_samples = 1000  # use subset to estimate thresholds
+    num_in_distr_thresholds = 10  # The number of thresholds collected from the samples
+    sample_diffs = temp_dsa.sample_diff_distributions(train_x[:num_samples])
+    # Take samples uniformly distributed over indexes
+    indexes = np.arange(0, num_in_distr_thresholds - 1) * num_samples
+    indexes = list(np.floor(indexes).astype(int))
+    indexes.append(sample_diffs.shape[0] - 1)
+    in_d_thresholds = sample_diffs[indexes]
+    return list(in_d_thresholds)
+
+
 def run_experiments(model,
                     sa_config: SurpriseAdequacyConfig,
                     train_x: np.ndarray,
@@ -58,8 +76,8 @@ def run_experiments(model,
         lsa_custom_info = {"num_samples": num_samples}
         results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
 
-    # TODO We need to come up with dynamic way to calculate these
-    for diff_threshold in [0.1, 0.001, 0.0001, .00001, 0.000001]:
+    thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
+    for diff_threshold in thresholds:
         dsa = DiffOfNormsSelectiveDSA(model=model,
                                       train_data=train_x,
                                       config=sa_config,
@@ -71,9 +89,8 @@ def run_experiments(model,
         }
         results.append(eval_for_sa(f"dsa_don_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
 
-    # TODO We need to come up with dynamic way to calculate these
-    for diff_threshold in range(10, 90, 10):
-        diff_threshold /= 1000  # int percentage to float ratio
+    thresholds = _get_thresholds(NormOfDiffsSelectiveDSA, model, train_x, sa_config)
+    for diff_threshold in thresholds:
         dsa = NormOfDiffsSelectiveDSA(model=model,
                                       train_data=train_x,
                                       config=sa_config,
@@ -128,7 +145,7 @@ def eval_for_sa(sa_name,
 
         result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
                                                   ood_auc_roc=ood_auc_roc,
-                                                  accuracy = accuracy,
+                                                  accuracy=accuracy,
                                                   num_nominal_samples=nominal_data[0].shape[0],
                                                   num_outlier_samples=x_test.shape[0])
 

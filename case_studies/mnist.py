@@ -5,12 +5,13 @@ from typing import Dict
 
 import foolbox
 import numpy as np
+import tensorflow as tf
 import uncertainty_wizard as uwiz
 
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
-NUM_MODELS = 2
+NUM_MODELS = 100
 
 
 class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
@@ -34,15 +35,39 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
     def gpu_memory_limit(cls) -> int:
         return 1000
 
+class EvalContext(TrainContext):
+    @classmethod
+    def virtual_devices_per_gpu(cls) -> Dict[int, int]:
+        return {
+            0: 5,
+            1: 5
+        }
+
+def prepare_adv_data(model):
+    x_train, _, x_test, y_test = _get_dataset()
+    badge_size = 100
+    x_test = np.reshape(x_test, (-1, badge_size, 28, 28, 1))
+    y_test = np.reshape(y_test, (-1, badge_size))
+
+    adv = []
+    for i in range(x_test.shape[0]):
+        fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1), device='CPU:0')
+        attack = foolbox.attacks.LinfFastGradientAttack()
+        attack_x = tf.convert_to_tensor(x_test[i])
+        attack_y = tf.convert_to_tensor(y_test[i], dtype=tf.int32)
+        advs, _, success = attack(fmodel, attack_x, attack_y, epsilons=[0.5])
+        adv.append(advs)
+    return np.concatenate(adv).reshape((-1, 28, 28, 1))
+
 
 def run_experiments(model_id, model):
     x_train, _, x_test, y_test = _get_dataset()
-
-    # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
-    advs = get_adv_data(model, x_test, y_test, epsilons=[0.5])
+    advs = prepare_adv_data(model)
+    corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy")
     test_data = {
         'nominal': (x_test, y_test),
-        'adv_fga_0.5': (advs, y_test)
+        'adv_fga_0.5': (advs, y_test),
+        'corrupted': (corrupted, y_test),
     }
     temp_folder = "/tmp/" + str(time.time())
     os.mkdir(temp_folder)
@@ -58,24 +83,6 @@ def run_experiments(model_id, model):
                                     sa_config=sa_config)
     utils.save_results_to_fs(results=results, case_study="mnist", model_id=model_id)
     shutil.rmtree(temp_folder)
-
-
-def get_adv_data(model, x_test, y_test, epsilons):
-    import tensorflow as tf
-
-    badge_size = 100
-    x_test = np.reshape(x_test, (-1, badge_size, 28, 28, 1))
-    y_test = np.reshape(y_test, (-1, badge_size))
-
-    adv = []
-    for i in range(x_test.shape[0]):
-        fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1))
-        attack = foolbox.attacks.LinfFastGradientAttack()
-        attack_x = tf.convert_to_tensor(x_test[i])
-        attack_y = tf.convert_to_tensor(y_test[i], dtype=tf.int32)
-        advs, _, success = attack(fmodel, attack_x, attack_y, epsilons=epsilons)
-        adv.append(advs)
-    return np.concatenate(adv).reshape((-1, 28, 28, 1))
 
 
 def train_model(model_id):
@@ -108,8 +115,6 @@ def train_model(model_id):
 
 
 def _get_dataset():
-    import tensorflow as tf
-
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_train = x_train.astype("float32") / 255
     x_test = x_test.astype("float32") / 255
@@ -131,8 +136,8 @@ if __name__ == '__main__':
     #     train_model, num_processes=8, context=TrainContext
     # )
 
-    model_collection.consume(
-        run_experiments, num_processes=0,
-        # context=TrainContext
 
+    model_collection.consume(
+        run_experiments, num_processes=10,
+        context=TrainContext
     )
