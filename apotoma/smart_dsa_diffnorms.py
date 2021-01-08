@@ -81,6 +81,13 @@ class DiffOfNormsSelectiveDSA(DSA):
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
 
     def sample_diff_distributions(self, x_subarray: np.ndarray) -> np.ndarray:
+        """
+        Calculates all differences between the samples passed in the subarray.
+        This can be used to guess thresholds for the algorithm.
+        The threshold passed when creating this DSA instance is ignored.
+        :param x_subarray: the subset of the train data (or any other data) for which to calc the differences
+        :return: Sorted one-dimensional array of differences
+        """
         ats, pred = self._calculate_ats(x_subarray)
         norms = np.linalg.norm(ats, axis=1)  # Norms
         unique_pred = np.unique(pred)
