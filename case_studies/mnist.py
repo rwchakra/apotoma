@@ -37,9 +37,6 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
 
 
 def run_experiments(model_id, model):
-    # TODO return this
-    if model_id < 2:
-        return
     x_train, _, x_test, y_test = _get_dataset()
 
     # epsilons = [0.0, 0.001, 0.01, 0.03, 0.1, 0.3, 0.5, 1.0]
@@ -110,8 +107,6 @@ def train_model(model_id):
 
 
 def _get_dataset():
-    import tensorflow as tf
-
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_train = x_train.astype("float32") / 255
     x_test = x_test.astype("float32") / 255

@@ -5,6 +5,7 @@ import tensorflow as tf
 
 from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig
 
+
 class NormOfDiffsSelectiveDSA(DSA):
 
     def __init__(self,
@@ -70,7 +71,6 @@ class NormOfDiffsSelectiveDSA(DSA):
                 if np.count_nonzero(is_available[current_idx:]) > 1:
                     current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
                 else:
-                    # np.argmax did not find anything
                     break
 
             selected_indexes = np.nonzero(is_available)[0]
@@ -79,3 +79,17 @@ class NormOfDiffsSelectiveDSA(DSA):
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
 
         self.class_matrix = new_class_matrix_norms_vec
+
+    def sample_diff_distributions(self, x_subarray: np.ndarray) -> np.ndarray:
+        ats, pred = self._calculate_ats(x_subarray)
+        unique_pred = np.unique(pred)
+        differences = []
+        for label in unique_pred:
+            label_indices = np.where(pred == label)
+            values = ats[label_indices]
+            diff_matrix = np.abs(values - np.expand_dims(values, 1))
+            norms = np.linalg.norm(diff_matrix, axis=2)  # Norms
+            indeces_under_diagonal = np.tril_indices(norms.shape[0], -1)
+            diffs = norms[indeces_under_diagonal]
+            differences += list(diffs)
+        return np.array(sorted(differences))
