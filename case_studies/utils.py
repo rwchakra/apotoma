@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+import warnings
 from typing import Dict, Tuple, List
 
 import numpy as np
@@ -72,9 +73,10 @@ def run_experiments(model,
         dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
         results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
         # LSA
-        lsa = LSA(model=model, train_data=train_subset, config=sa_config)
-        lsa_custom_info = {"num_samples": num_samples}
-        results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
+        warnings.warn("LSA temporarily disabled")
+        # lsa = LSA(model=model, train_data=train_subset, config=sa_config)
+        # lsa_custom_info = {"num_samples": num_samples}
+        # results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
 
     thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
     for diff_threshold in thresholds:

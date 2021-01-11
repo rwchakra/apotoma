@@ -64,8 +64,6 @@ def train_model(model_id):
     x_train = x_train / 255.
     y_train = tf.keras.utils.to_categorical(y_train, 10)
 
-    # For the sake of this example, let's use just one epoch.
-    # Of course, for higher accuracy, you should use more.
     model.fit(x_train, y_train, batch_size=32, epochs=100, validation_split=0.1,
               callbacks=[tf.keras.callbacks.EarlyStopping(patience=2)])
 
@@ -83,6 +81,8 @@ def _get_dataset():
 
 
 def run_experiments(model_id, model):
+    if model_id <= 6:
+        return None # TODO delete this condition
     print(f"Starting with model id {model_id}")
     x_train, _, x_test, y_test = _get_dataset()
 
@@ -102,7 +102,8 @@ def run_experiments(model_id, model):
         is_classification=True,
         layer_names=["last_dense"],
         ds_name=f"mnist_{model_id}",
-        num_classes=10)
+        num_classes=10,
+        batch_size=16)
     results = utils.run_experiments(model=model,
                                     train_x=x_train,
                                     test_data=test_data,
@@ -118,7 +119,7 @@ def get_adv_data(model, x_test, y_test, epsilons):
 
     adv = []
     for i in range(x_test.shape[0]):
-        fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1))
+        fmodel = foolbox.models.TensorFlowModel(model, bounds=(0, 1), device='CPU:0')
         attack = foolbox.attacks.LinfFastGradientAttack()
         attack_x = tf.convert_to_tensor(x_test[i])
         attack_y = tf.convert_to_tensor(y_test[i], dtype=tf.int32)
@@ -130,7 +131,7 @@ def get_adv_data(model, x_test, y_test, epsilons):
 
 if __name__ == '__main__':
     # Prepare dataset in cache
-    tf.keras.datasets.cifar10.load_data()
+    # tf.keras.datasets.cifar10.load_data()
 
     model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
                                                 model_save_path=config.MODELS_BASE_FOLDER + "cifar10",
@@ -141,6 +142,6 @@ if __name__ == '__main__':
     # )
 
     model_collection.consume(
-        run_experiments, num_processes=0,
+        run_experiments, num_processes=2,
         # context=TrainContext
     )
