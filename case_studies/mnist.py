@@ -63,11 +63,11 @@ def prepare_adv_data(model):
 def run_experiments(model_id, model):
     x_train, _, x_test, y_test = _get_dataset()
     advs = prepare_adv_data(model)
-    corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy")
+    #corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy")
     test_data = {
         'nominal': (x_test, y_test),
         'adv_fga_0.5': (advs, y_test),
-        'corrupted': (corrupted, y_test),
+        #'corrupted': (corrupted, y_test),
     }
     temp_folder = "/tmp/" + str(time.time())
     os.mkdir(temp_folder)
@@ -128,6 +128,7 @@ if __name__ == '__main__':
     # Prepare dataset in cache
     # tf.keras.datasets.mnist.load_data()
 
+    #TODO Load model files and run LSA for different bandwidths, store in different folder (change utils)
     model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
                                                 model_save_path=config.MODELS_BASE_FOLDER + "mnist",
                                                 delete_existing=False)
@@ -137,6 +138,5 @@ if __name__ == '__main__':
 
 
     model_collection.consume(
-        run_experiments, num_processes=10,
-        context=TrainContext
+        run_experiments, num_processes=0
     )

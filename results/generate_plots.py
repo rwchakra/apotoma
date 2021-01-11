@@ -6,10 +6,10 @@ import numpy as np
 import os
 import pickle
 
-files_dsa = os.listdir('./mnist')
-files_dsa = [f for f in files_dsa if 'dsa' in f]
-dsa_dons = {}
-dsa_nods = {}
+# files_dsa = os.listdir('./mnist')
+# files_dsa = [f for f in files_dsa if 'dsa' in f]
+# dsa_dons = {}
+# dsa_nods = {}
 dsa_rans = {}
 
 # for file_dsa in files_dsa:
@@ -67,7 +67,21 @@ dsa_rans = {}
 # plt.clf()
 #
 # #Bar plot for random
-# rans = {val[0]:val[2] for item, val in dsa_rans.items()}
+# root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/experiments/experiments/mnist/'
+# files_dsa = os.listdir(root)
+# files_dsa = [f for f in files_dsa if 'dsa' in f and 'rand' in f]
+# for f in files_dsa:
+#     times = 0
+#     pickle_models = os.listdir(root+f)
+#     for pickle_model in pickle_models:
+#         with open(root+f+'/'+pickle_model, 'rb') as fb:
+#             data_dsa = pickle.load(fb)
+#         times += data_dsa.evals['adv_fga_0.5'].eval_time
+#
+#         param = data_dsa.approach_custom_info['sum_samples']
+#     dsa_rans[param] = (re.findall('\d+', f.split('_')[1])[0], times/len(pickle_models))
+#
+# rans = {val[0]:val[1] for item, val in dsa_rans.items()}
 # sorted_rans = sorted(rans.items(), key=lambda item: float(item[0]), reverse=True)
 # sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
 # scores_rans = [item[1] for item in sorted_rans]
@@ -77,7 +91,7 @@ dsa_rans = {}
 # plt.xlabel("%age Points Sampled")
 # plt.ylabel("Time(s)")
 # plt.title("Eval Times for random sampling")
-# plt.savefig('./dsa_plots_mnist/random_sampling_times.png')
+# plt.savefig('./dsa_plots_mnist/random_sampling_times_local.png')
 
 #Box plots for lsa and dsa: rand100
 
@@ -135,50 +149,50 @@ dsa_rans = {}
 # ax.set_ylabel('AUC')
 # fig.savefig('lsa_vs_dsa.png', bbox_inches='tight')
 
-dsa_ran20 = []
-dsa_files_ran20 = os.listdir('./mnist/dsa_rand20_perc')
-
-for dsa_file in dsa_files_ran20:
-    with open('./mnist/dsa_rand20_perc/' + dsa_file, 'rb') as f:
-        data_dsa = pickle.load(f)
-
-    dsa_ran20.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
-
-# print(dsa_ran50)
+# dsa_ran20 = []
+# dsa_files_ran20 = os.listdir('./mnist/dsa_rand20_perc')
 #
-# print(np.mean(dsa_ran50), np.mean(dsa_ran100))
-# print(min(dsa_ran50), min(dsa_ran100))
-# print(max(dsa_ran50), max(dsa_ran100))
-data = [dsa_ran20]
-fig = plt.figure(1, figsize=(9, 6))
-
-# Create an axes instance
-ax = fig.add_subplot(111)
-
-bp = ax.boxplot(data, patch_artist=True)
-
-## change outline color, fill color and linewidth of the boxes
-for box in bp['boxes']:
-    # change outline color
-    box.set( color='#7570b3', linewidth=2)
-    # change fill color
-    box.set( facecolor = '#1b9e77' )
-
-## change color and linewidth of the whiskers
-for whisker in bp['whiskers']:
-    whisker.set(color='#7570b3', linewidth=2)
-
-## change color and linewidth of the caps
-for cap in bp['caps']:
-    cap.set(color='#7570b3', linewidth=2)
-
-## change color and linewidth of the medians
-for median in bp['medians']:
-    median.set(color='#b2df8a', linewidth=2)
-
-## change the style of fliers and their fill
-for flier in bp['fliers']:
-    flier.set(marker='o', color='#e7298a', alpha=0.5)
-
-
-fig.savefig('dsa_ran20.png', bbox_inches='tight')
+# for dsa_file in dsa_files_ran20:
+#     with open('./mnist/dsa_rand20_perc/' + dsa_file, 'rb') as f:
+#         data_dsa = pickle.load(f)
+#
+#     dsa_ran20.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
+#
+# # print(dsa_ran50)
+# #
+# # print(np.mean(dsa_ran50), np.mean(dsa_ran100))
+# # print(min(dsa_ran50), min(dsa_ran100))
+# # print(max(dsa_ran50), max(dsa_ran100))
+# data = [dsa_ran20]
+# fig = plt.figure(1, figsize=(9, 6))
+#
+# # Create an axes instance
+# ax = fig.add_subplot(111)
+#
+# bp = ax.boxplot(data, patch_artist=True)
+#
+# ## change outline color, fill color and linewidth of the boxes
+# for box in bp['boxes']:
+#     # change outline color
+#     box.set( color='#7570b3', linewidth=2)
+#     # change fill color
+#     box.set( facecolor = '#1b9e77' )
+#
+# ## change color and linewidth of the whiskers
+# for whisker in bp['whiskers']:
+#     whisker.set(color='#7570b3', linewidth=2)
+#
+# ## change color and linewidth of the caps
+# for cap in bp['caps']:
+#     cap.set(color='#7570b3', linewidth=2)
+#
+# ## change color and linewidth of the medians
+# for median in bp['medians']:
+#     median.set(color='#b2df8a', linewidth=2)
+#
+# ## change the style of fliers and their fill
+# for flier in bp['fliers']:
+#     flier.set(marker='o', color='#e7298a', alpha=0.5)
+#
+#
+# fig.savefig('dsa_ran20.png', bbox_inches='tight')

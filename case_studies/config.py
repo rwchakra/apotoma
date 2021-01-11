@@ -1,6 +1,6 @@
-BASE_FOLDER = "/experiments/sa_plusplus/"
-MODELS_BASE_FOLDER = BASE_FOLDER + "models/"
+BASE_FOLDER = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/lsa_models/"
+MODELS_BASE_FOLDER = BASE_FOLDER
 RESULTS_BASE_FOLDER = BASE_FOLDER + "results/"
 DATASETS_BASE_FOLDER = BASE_FOLDER + "datasets/"
 
-DSA_BATCH_SIZE = 10000
+DSA_BATCH_SIZE = 500

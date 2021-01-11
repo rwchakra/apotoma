@@ -371,7 +371,7 @@ class LSA(SurpriseAdequacy):
 
     @staticmethod
     def _create_gaussian_kde(refined_ats):
-        return gaussian_kde(refined_ats)
+        return gaussian_kde(refined_ats, bw_method='silverman')
 
     def _calc_lsa(self,
                   target_ats: np.ndarray,
