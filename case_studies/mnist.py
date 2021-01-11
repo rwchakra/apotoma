@@ -39,8 +39,8 @@ class EvalContext(TrainContext):
     @classmethod
     def virtual_devices_per_gpu(cls) -> Dict[int, int]:
         return {
-            0: 5,
-            1: 5
+            0: 2,
+            1: 2
         }
 
 def prepare_adv_data(model):
@@ -137,6 +137,6 @@ if __name__ == '__main__':
 
 
     model_collection.consume(
-        run_experiments, num_processes=10,
+        run_experiments, num_processes=4,
         context=TrainContext
     )
