@@ -204,4 +204,4 @@ for flier in bp['fliers']:
 ax.set_xticklabels(tr)
 ax.set_ylabel('AUC score')
 ax.set_title('LSA stability over different kernel bandwidths')
-fig.savefig('lsa_thresholds.png', bbox_inches='tight')
+fig.savefig('lsa_thresholds_2.png', bbox_inches='tight')

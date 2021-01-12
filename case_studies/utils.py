@@ -63,7 +63,7 @@ def run_experiments(model,
     results = []
 
     nominal_data = test_data.pop("nominal")
-    kde_tr = [0.1, 0.4, 'scott', 'silverman', 0.6, 0.7, 0.8, 0.9, 1.0]
+    kde_tr = [0.1, 0.4, 'scott', 'silverman', 1.0, 1.5, 2.0]
 
     for bw in kde_tr:
         for train_percent in range(100, 101):
