@@ -27,8 +27,8 @@ for file_dsa in files_dsa:
     for pickle_model in pickle_models:
         with open('./mnist/'+file_dsa+'/'+pickle_model, 'rb') as f:
             data_dsa = pickle.load(f)
-        scores += data_dsa.evals['corrupted'].ood_auc_roc
-        times += data_dsa.evals['corrupted'].eval_time
+        scores += data_dsa.evals['adv_fga_0.5'].ood_auc_roc
+        times += data_dsa.evals['adv_fga_0.5'].eval_time
 
     if type_result == 'don':
         param = data_dsa.approach_custom_info['num_samples']
@@ -66,8 +66,8 @@ for file_lsa in files_lsa:
     for pickle_model in pickle_models:
         with open('./mnist/' + file_lsa + '/' + pickle_model, 'rb') as f:
             data_lsa = pickle.load(f)
-        scores += data_lsa.evals['corrupted'].ood_auc_roc
-        times += data_lsa.evals['corrupted'].eval_time
+        scores += data_lsa.evals['adv_fga_0.5'].ood_auc_roc
+        times += data_lsa.evals['adv_fga_0.5'].eval_time
 
 
     param = data_lsa.approach_custom_info['num_samples']
@@ -243,12 +243,12 @@ plt.savefig('dsa_lsa_auc_plots_corrupted.png')
 
 # #Plot all AUC-ROC
 
-# for f in files_dsa:
-#     if 'nod' in f:
-#         don_files = os.listdir('./mnist/'+f)
-#         for file in don_files:
-#             with open('./mnist/'+f+'/'+file, 'rb') as fb:
-#                 data = pickle.load(fb)
-#                 param = data.approach_custom_info['num_samples']
-#             dsa_nods[param] = data.evals['adv_fga_0.5'].ood_auc_roc
+for f in files_dsa:
+    if 'nod' in f:
+        don_files = os.listdir('./mnist/'+f)
+        for file in don_files:
+            with open('./mnist/'+f+'/'+file, 'rb') as fb:
+                data = pickle.load(fb)
+                param = data.approach_custom_info['num_samples']
+            dsa_nods[param] = data.evals['adv_fga_0.5'].ood_auc_roc
 
