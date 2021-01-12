@@ -130,7 +130,8 @@ if __name__ == '__main__':
 
     model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
                                                 model_save_path=config.MODELS_BASE_FOLDER + "mnist",
-                                                delete_existing=False)
+                                                delete_existing=False,
+                                                expect_model=True)
     # histories = model_collection.create(
     #     train_model, num_processes=8, context=TrainContext
     # )
