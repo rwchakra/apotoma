@@ -147,52 +147,61 @@ dsa_rans = {}
 # ax.set_xticklabels(['LSA', 'DSA'])
 # ax.set_title('Stability (LSA vs DSA)')
 # ax.set_ylabel('AUC')
-# fig.savefig('lsa_vs_dsa.png', bbox_inches='tight')
+# fig.savefig('lsa_vs_dsa_100.png', bbox_inches='tight')
 
-# dsa_ran20 = []
-# dsa_files_ran20 = os.listdir('./mnist/dsa_rand20_perc')
+lsa_ran100 = []
+root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/lsa_models/results/mnist/'
+lsa_kdes = os.listdir(root)
+lsa_kdes = [f for f in lsa_kdes if 'kde' in f]
+all_data = []
+tr = []
+for f in lsa_kdes:
+    data_kde = []
+    lsa_files = os.listdir(root+f)
+    for lsa_file in lsa_files:
+        with open(root + f+'/'+lsa_file, 'rb') as fb:
+            data_dsa = pickle.load(fb)
+
+        data_kde.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
+    all_data.append(data_kde)
+    tr.append(f.split('_')[2])
+# print(dsa_ran50)
 #
-# for dsa_file in dsa_files_ran20:
-#     with open('./mnist/dsa_rand20_perc/' + dsa_file, 'rb') as f:
-#         data_dsa = pickle.load(f)
-#
-#     dsa_ran20.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
-#
-# # print(dsa_ran50)
-# #
-# # print(np.mean(dsa_ran50), np.mean(dsa_ran100))
-# # print(min(dsa_ran50), min(dsa_ran100))
-# # print(max(dsa_ran50), max(dsa_ran100))
-# data = [dsa_ran20]
-# fig = plt.figure(1, figsize=(9, 6))
-#
-# # Create an axes instance
-# ax = fig.add_subplot(111)
-#
-# bp = ax.boxplot(data, patch_artist=True)
-#
-# ## change outline color, fill color and linewidth of the boxes
-# for box in bp['boxes']:
-#     # change outline color
-#     box.set( color='#7570b3', linewidth=2)
-#     # change fill color
-#     box.set( facecolor = '#1b9e77' )
-#
-# ## change color and linewidth of the whiskers
-# for whisker in bp['whiskers']:
-#     whisker.set(color='#7570b3', linewidth=2)
-#
-# ## change color and linewidth of the caps
-# for cap in bp['caps']:
-#     cap.set(color='#7570b3', linewidth=2)
-#
-# ## change color and linewidth of the medians
-# for median in bp['medians']:
-#     median.set(color='#b2df8a', linewidth=2)
-#
-# ## change the style of fliers and their fill
-# for flier in bp['fliers']:
-#     flier.set(marker='o', color='#e7298a', alpha=0.5)
-#
-#
-# fig.savefig('dsa_ran20.png', bbox_inches='tight')
+# print(np.mean(dsa_ran50), np.mean(dsa_ran100))
+# print(min(dsa_ran50), min(dsa_ran100))
+# print(max(dsa_ran50), max(dsa_ran100))
+data = [lsa_ran100]
+fig = plt.figure(1, figsize=(9, 6))
+
+# Create an axes instance
+ax = fig.add_subplot(111)
+
+bp = ax.boxplot(all_data, patch_artist=True)
+
+## change outline color, fill color and linewidth of the boxes
+for box in bp['boxes']:
+    # change outline color
+    box.set( color='#7570b3', linewidth=2)
+    # change fill color
+    box.set( facecolor = '#1b9e77' )
+
+## change color and linewidth of the whiskers
+for whisker in bp['whiskers']:
+    whisker.set(color='#7570b3', linewidth=2)
+
+## change color and linewidth of the caps
+for cap in bp['caps']:
+    cap.set(color='#7570b3', linewidth=2)
+
+## change color and linewidth of the medians
+for median in bp['medians']:
+    median.set(color='#b2df8a', linewidth=2)
+
+## change the style of fliers and their fill
+for flier in bp['fliers']:
+    flier.set(marker='o', color='#e7298a', alpha=0.5)
+
+ax.set_xticklabels(tr)
+ax.set_ylabel('AUC score')
+ax.set_title('LSA stability over different kernel bandwidths')
+fig.savefig('lsa_thresholds.png', bbox_inches='tight')

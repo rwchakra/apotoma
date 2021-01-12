@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from scipy.stats import gaussian_kde
 from tensorflow.keras.models import Model
 from tqdm import tqdm
+import cloudpickle
 
 
 @dataclass
@@ -246,10 +247,11 @@ class SurpriseAdequacy(ABC):
 
 class LSA(SurpriseAdequacy):
 
-    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: SurpriseAdequacyConfig) -> None:
+    def __init__(self, model: tf.keras.Model, train_data: np.ndarray, config: SurpriseAdequacyConfig, kde_bw) -> None:
         super().__init__(model, train_data, config)
         self.kdes = None
         self.removed_rows = None
+        self.kde_bw = kde_bw
 
     def prep(self, use_cache: bool = False) -> None:
         super().prep()
@@ -277,7 +279,7 @@ class LSA(SurpriseAdequacy):
         else:
             self.kdes, self.removed_rows = self._calc_kdes()
             with open(kdes_path, 'wb') as file:
-                pickle.dump(self.kdes, file=file)
+                cloudpickle.dump(self.kdes, file=file)
             with open(rem_row_path, 'wb') as file:
                 pickle.dump(self.removed_rows, file=file)
 
@@ -369,9 +371,9 @@ class LSA(SurpriseAdequacy):
 
         return kdes, removed_rows
 
-    @staticmethod
-    def _create_gaussian_kde(refined_ats):
-        return gaussian_kde(refined_ats, bw_method='silverman')
+
+    def _create_gaussian_kde(self, refined_ats):
+        return gaussian_kde(refined_ats, bw_method=self.kde_bw)
 
     def _calc_lsa(self,
                   target_ats: np.ndarray,

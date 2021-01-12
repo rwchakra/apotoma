@@ -63,18 +63,20 @@ def run_experiments(model,
     results = []
 
     nominal_data = test_data.pop("nominal")
+    kde_tr = [0.1, 0.4, 'scott', 'silverman', 0.6, 0.7, 0.8, 0.9, 1.0]
 
-    for train_percent in range(5, 101, 5):
-        num_samples = int(train_x.shape[0] * train_percent / 100)
-        train_subset = train_x[:num_samples]
-        # DSA
-        # dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
-        # dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
-        # results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
-        # LSA
-        lsa = LSA(model=model, train_data=train_subset, config=sa_config)
-        lsa_custom_info = {"num_samples": num_samples}
-        results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
+    for bw in kde_tr:
+        for train_percent in range(100, 101):
+            num_samples = int(train_x.shape[0] * train_percent / 100)
+            train_subset = train_x[:num_samples]
+            # DSA
+            # dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
+            # dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
+            # results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
+            # LSA
+            lsa = LSA(model=model, train_data=train_subset, config=sa_config, kde_bw=bw)
+            lsa_custom_info = {"num_samples": num_samples}
+            results.append(eval_for_sa(f"lsa_rand_kde{bw}_perc", lsa, lsa_custom_info, nominal_data, test_data))
 
     # thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
     # for diff_threshold in thresholds:

@@ -11,7 +11,7 @@ import uncertainty_wizard as uwiz
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
-NUM_MODELS = 100
+NUM_MODELS = 20
 
 
 class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
