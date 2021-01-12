@@ -457,11 +457,11 @@ class DSA(SurpriseAdequacy):
 
         dsa = np.empty(shape=target_pred.shape[0])
         start = 0
-        all_idx = list(range(len(self.train_pred)))
 
         print(f"[{ds_type}] Calculating DSA")
 
         num_targets = target_pred.shape[0]
+
         while start < num_targets:
 
             # Select batch
@@ -475,14 +475,14 @@ class DSA(SurpriseAdequacy):
             for label in range(self.config.num_classes):
                 matches = np.where(batch == label)
                 if len(matches) > 0:
-                    a_min_dist, b_min_dist = self._dsa_distances(all_idx, label, matches, start, target_ats)
+                    a_min_dist, b_min_dist = self._dsa_distances(label, matches, start, target_ats)
                     dsa[matches[0] + start] = a_min_dist / b_min_dist
 
             start += self.dsa_batch_size
 
         return dsa
 
-    def _dsa_distances(self, all_idx: list, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray) -> \
+    def _dsa_distances(self, label: int, matches: np.ndarray, start: int, target_ats: np.ndarray) -> \
             Tuple[np.ndarray, np.ndarray]:
 
         target_matches = target_ats[matches[0] + start]
@@ -492,7 +492,9 @@ class DSA(SurpriseAdequacy):
         a_min_dist = np.min(a_dist_norms, axis=1)
         closest_position = np.argmin(a_dist_norms, axis=1)
         closest_ats = train_matches_same_class[closest_position]
-        train_matches_other_classes = self.train_ats[list(set(all_idx) - set(self.class_matrix[label]))]
+        other_classes_indexes = np.ones(shape=self.train_ats.shape[0], dtype=bool)
+        other_classes_indexes[self.class_matrix[label]] = 0
+        train_matches_other_classes = self.train_ats[other_classes_indexes]
         b_dist = closest_ats[:, None] - train_matches_other_classes
         b_dist_norms = np.linalg.norm(b_dist, axis=2)
         b_min_dist = np.min(b_dist_norms, axis=1)
