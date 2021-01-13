@@ -67,7 +67,7 @@ def run_experiments(model_id, model):
     test_data = {
         'nominal': (x_test, y_test),
         'adv_fga_0.5': (advs, y_test),
-        # 'corrupted': (corrupted, y_test),
+        'corrupted': (corrupted, y_test),
     }
     temp_folder = "/tmp/" + str(time.time())
     os.mkdir(temp_folder)
