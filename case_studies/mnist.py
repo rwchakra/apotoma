@@ -138,6 +138,6 @@ if __name__ == '__main__':
 
 
     model_collection.consume(
-        run_experiments, num_processes=4,
+        run_experiments, num_processes=0,
         context=TrainContext
     )

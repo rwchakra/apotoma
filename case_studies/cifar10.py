@@ -81,8 +81,6 @@ def _get_dataset():
 
 
 def run_experiments(model_id, model):
-    if model_id <= 6:
-        return None # TODO delete this condition
     print(f"Starting with model id {model_id}")
     x_train, _, x_test, y_test = _get_dataset()
 
@@ -91,6 +89,7 @@ def run_experiments(model_id, model):
     corrupted = np.load(str(os.path.join(config.BASE_FOLDER, "datasets", "cifar10_corrupted.npy")))
     test_data = {
         'nominal': (x_test, y_test),
+        # TODO enable corrupted
         'corrupted_sev_5': (corrupted[:, 4] / 255., y_test),
         # TODO change once doing multiple epsilons
         'adv_fga_0.5': (advs, y_test)
@@ -142,6 +141,6 @@ if __name__ == '__main__':
     # )
 
     model_collection.consume(
-        run_experiments, num_processes=2,
+        run_experiments, num_processes=0,
         # context=TrainContext
     )

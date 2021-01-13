@@ -40,9 +40,42 @@ class NormOfDiffsSelectiveDSA(DSA):
         all_train_ats = self.train_ats
         all_train_pred = self.train_pred
 
-        new_class_matrix_norms_vec = {}
-        for label in range(10):
+        class_pred_matrix = {}
 
+        # TODO change this to work for regression and general number of classes
+        # collected_ats = []
+        # collected_pred = []
+        for label in range(10):
+            # ats = all_train_ats[all_train_pred == label]
+            # is_available_mask = np.ones(dtype=bool, shape=ats.shape[0])
+            #
+            # class_pred_matrix[label] = []
+            #
+            # i = 0
+            # while True:
+            #     current_ats = ats[i]
+            #     # Select with (all_train_ats) index i in the selected list of ats
+            #     # and put its new index in the new matrix
+            #     class_pred_matrix[label].append(len(collected_ats)) # The new index
+            #     collected_ats.append(current_ats)
+            #     collected_pred.append(label)  # For regression: replace with all_train_pred[i]
+            #
+            #     # Current ats is selected and becomes unavailable
+            #     is_available_mask[i] = False
+            #
+            #     # Calculate differences and update is_available_mask
+            #     avail_ats = ats[is_available_mask]
+            #     diffs = np.linalg.norm(avail_ats - current_ats, axis=1)
+            #     is_available_indexes = np.where(is_available_mask)[0]
+            #     drop_indeces = is_available_indexes[np.where(diffs < 0)] # TODO switch to thresholds
+            #     is_available_mask[drop_indeces] = False
+            #
+            #     i = np.argmax(is_available_mask)
+            #     if i == 0:
+            #         break
+            #
+
+            # OLD CODE
             data_label = all_train_ats[np.where(all_train_pred == label)]
             available_indices = np.where(all_train_pred == label)[0]
 
@@ -57,7 +90,7 @@ class NormOfDiffsSelectiveDSA(DSA):
                 candidate_indexes = np.argwhere((indexes > current_idx) & is_available).flatten()
                 candidates = data_label[candidate_indexes]
 
-                diffs = np.linalg.norm(candidates - data_label[current_idx], axis=1)
+                diffs = np.linalg.norm(np.abs(candidates - data_label[current_idx]), axis=1)
                 assert diffs.ndim == 1
 
                 # Identify candidates which are too similar to currently added element (current_idx)
@@ -74,13 +107,24 @@ class NormOfDiffsSelectiveDSA(DSA):
                     break
 
             selected_indexes = np.nonzero(is_available)[0]
-            new_class_matrix_norms_vec[label] = list(available_indices[selected_indexes])
+            class_pred_matrix[label] = list(available_indices[selected_indexes])
 
-        self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
+            # TODO Move to proper unit test
+            # selected_predictions = all_train_pred[class_pred_matrix[label]]
+            # assert np.std(selected_predictions) == 0, "Not all predictions are for the same class"
+            # selected_ats = all_train_ats[class_pred_matrix[label]]
+            # # selected_ats = np.array(collected_ats)[np.array(collected_pred) == label]
+            # for i in range(selected_ats.shape[0] - 1):
+            #     # Note: This completely ignores labels
+            #     min_dist = np.min(np.linalg.norm(selected_ats[1 + i:] - selected_ats[i], axis=1))
+            #     assert min_dist >= self.threshold, f"Found difference {min_dist} < {self.threshold}"
+            # # END TEST
 
-        self.class_matrix = new_class_matrix_norms_vec
+        self.number_of_samples = sum(len(lst) for lst in class_pred_matrix.values())
 
-    def sample_diff_distributions(self, x_subarray: np.ndarray) -> np.ndarray:
+        self.class_matrix = class_pred_matrix
+
+    def sample_diff_distributions(self, x_subarray: np.ndarray, num_samples=100) -> np.ndarray:
         """
         Calculates all differences between the samples passed in the subarray.
         This can be used to guess thresholds for the algorithm.
@@ -89,14 +133,9 @@ class NormOfDiffsSelectiveDSA(DSA):
         :return: Sorted one-dimensional array of differences
         """
         ats, pred = self._calculate_ats(x_subarray)
-        unique_pred = np.unique(pred)
-        differences = []
-        for label in unique_pred:
-            label_indices = np.where(pred == label)
-            values = ats[label_indices]
-            diff_matrix = np.abs(values - np.expand_dims(values, 1))
-            norms = np.linalg.norm(diff_matrix, axis=2)  # Norms
-            indeces_under_diagonal = np.tril_indices(norms.shape[0], -1)
-            diffs = norms[indeces_under_diagonal]
-            differences += list(diffs)
-        return np.array(sorted(differences))
+        differences = np.empty(shape=num_samples)
+        for i in range(num_samples):
+            # Note: This completely ignores labels
+            min_dist = np.min(np.linalg.norm(np.abs(ats[1 + i:] - ats[i]), axis=1))
+            differences[i] = min_dist
+        return np.sort(differences)

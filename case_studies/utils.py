@@ -1,7 +1,6 @@
 import os
 import pickle
 import time
-import warnings
 from typing import Dict, Tuple, List
 
 import numpy as np
@@ -10,11 +9,11 @@ from sklearn import metrics
 
 from apotoma.smart_dsa_diffnorms import DiffOfNormsSelectiveDSA
 from apotoma.smart_dsa_normdiffs import NormOfDiffsSelectiveDSA
-from apotoma.surprise_adequacy import LSA, DSA, SurpriseAdequacyConfig, SurpriseAdequacy
+from apotoma.surprise_adequacy import SurpriseAdequacyConfig, SurpriseAdequacy, LSA, DSA
 from case_studies import config
 
-# We accept redundant at calculation for now - may change this later
-USE_CACHE = False
+# We are not tracking offline times at the moment
+USE_CACHE = True
 
 
 class Result:
@@ -46,15 +45,19 @@ def _get_thresholds(smart_class, model, train_x, sa_config):
                            dsa_batch_size=config.DSA_BATCH_SIZE,
                            threshold=0.1  # Threshold does not matter here
                            )
-    num_samples = 1000  # use subset to estimate thresholds
-    num_in_distr_thresholds = 10  # The number of thresholds collected from the samples
-    sample_diffs = temp_dsa.sample_diff_distributions(train_x[:num_samples])
+    num_samples = train_x.shape[0]  # use subset to estimate thresholds
+    num_sampled_thresholds = 10  # The number of thresholds collected from the samples
+    sample_diffs = temp_dsa.sample_diff_distributions(train_x[:num_samples], num_samples=1000)
     # Take samples uniformly distributed over indexes
-    indexes = np.arange(0, num_in_distr_thresholds - 1) * num_samples
+    indexes = np.floor(np.arange(0, num_sampled_thresholds) * (sample_diffs.shape[0] / num_sampled_thresholds))
     indexes = list(np.floor(indexes).astype(int))
     indexes.append(sample_diffs.shape[0] - 1)
-    in_d_thresholds = sample_diffs[indexes]
-    return list(in_d_thresholds)
+    thresholds = list(sample_diffs[indexes])
+    # Prepend a very small threshold
+    thresholds.insert(0, thresholds[0] / 2)
+    # Append a very large threshold
+    thresholds.append(thresholds[len(thresholds) - 1] * 2)
+    return thresholds
 
 
 def run_experiments(model,
@@ -65,7 +68,7 @@ def run_experiments(model,
 
     nominal_data = test_data.pop("nominal")
 
-    for train_percent in range(5, 101, 5):
+    for train_percent in range(100, 101, 5):  # TODO Revert
         num_samples = int(train_x.shape[0] * train_percent / 100)
         train_subset = train_x[:num_samples]
         # DSA
@@ -73,24 +76,23 @@ def run_experiments(model,
         dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
         results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
         # LSA
-        warnings.warn("LSA temporarily disabled")
-        # lsa = LSA(model=model, train_data=train_subset, config=sa_config)
-        # lsa_custom_info = {"num_samples": num_samples}
-        # results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
-
-    thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
-    for diff_threshold in thresholds:
-        dsa = DiffOfNormsSelectiveDSA(model=model,
-                                      train_data=train_x,
-                                      config=sa_config,
-                                      dsa_batch_size=config.DSA_BATCH_SIZE,
-                                      threshold=diff_threshold)
-        dsa_custom_info = {
-            "diff_threshold": diff_threshold,
-            "dsa_batch_size": config.DSA_BATCH_SIZE
-        }
-        results.append(eval_for_sa(f"dsa_don_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
-
+        lsa = LSA(model=model, train_data=train_subset, config=sa_config)
+        lsa_custom_info = {"num_samples": num_samples}
+        results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
+    #
+    # thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
+    # for diff_threshold in thresholds:
+    #     dsa = DiffOfNormsSelectiveDSA(model=model,
+    #                                   train_data=train_x,
+    #                                   config=sa_config,
+    #                                   dsa_batch_size=config.DSA_BATCH_SIZE,
+    #                                   threshold=diff_threshold)
+    #     dsa_custom_info = {
+    #         "diff_threshold": diff_threshold,
+    #         "dsa_batch_size": config.DSA_BATCH_SIZE
+    #     }
+    #     results.append(eval_for_sa(f"dsa_don_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
+    #
     thresholds = _get_thresholds(NormOfDiffsSelectiveDSA, model, train_x, sa_config)
     for diff_threshold in thresholds:
         dsa = NormOfDiffsSelectiveDSA(model=model,
@@ -123,7 +125,7 @@ def eval_for_sa(sa_name,
     # Create result object
     result = Result(name=sa_name, prepare_time=prep_time, approach_custom_info=approach_custom_info)
 
-    nom_surp, nom_pred = sa.calc(target_data=nominal_data[0], use_cache=USE_CACHE, ds_type='test')
+    nom_surp, nom_pred = sa.calc(target_data=nominal_data[0], use_cache=True, ds_type='test')
 
     for test_set_name, test_set in test_data.items():
         print(f"Evaluating {sa_name} with test set {test_set_name}")
@@ -131,7 +133,7 @@ def eval_for_sa(sa_name,
 
         calc_start = time.time()
         # TODO split DNN prediction and SA calculation
-        surp, pred = sa.calc(target_data=x_test, use_cache=USE_CACHE, ds_type='test')
+        surp, pred = sa.calc(target_data=x_test, use_cache=False, ds_type='ood')
         calc_time = time.time() - calc_start
 
         # Used for (outlier-only) misclassification prediction
@@ -145,6 +147,7 @@ def eval_for_sa(sa_name,
         combined_surp = np.concatenate((nom_surp, surp))
         ood_auc_roc = metrics.roc_auc_score(is_outlier, combined_surp)
 
+        print(f"Result Preview {approach_custom_info['num_samples']} : {ood_auc_roc}")
         result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
                                                   ood_auc_roc=ood_auc_roc,
                                                   accuracy=accuracy,
