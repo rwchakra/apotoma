@@ -1,6 +1,4 @@
 import os
-import random
-from typing import List
 
 import numpy as np
 import tensorflow as tf
@@ -54,20 +52,26 @@ class DSAbyLSA(DSA):
             lsa_values = inner_lsa._calc_lsa(target_ats=all_train_ats, target_pred=all_train_pred)
 
         new_class_matrix_norms_vec = {}
+        new_ats = []  # Will be concatenated to get new self.train_ats
+        new_pred = []  # Will be concatenated to get new self.train_pred
+        selected_so_far = 0
         for label in range(10):
-
             available_indices = np.where(all_train_pred == label)[0]
             for_label_lsa = lsa_values[available_indices]
+            for_label_ats = all_train_ats[available_indices]
 
             for_label_indexes_sorted_by_lsa = np.argsort(for_label_lsa)
-            # TODO Revert
-            for_label_indexes_sorted_by_lsa = list(for_label_indexes_sorted_by_lsa)
-            random.shuffle(for_label_indexes_sorted_by_lsa)
-            num_samples_to_pick = int(np.floor(available_indices.shape[0] * self.select_share))
-            selected_for_label_indexes = for_label_indexes_sorted_by_lsa[:num_samples_to_pick]
-            selected_overall_indexes = available_indices[selected_for_label_indexes]
-            new_class_matrix_norms_vec[label] = list(selected_overall_indexes)
+            num_chosen_samples = int(np.floor(available_indices.shape[0] * self.select_share))
+            selected_for_label_indexes = for_label_indexes_sorted_by_lsa[:num_chosen_samples]
+            chosen_ats = for_label_ats[selected_for_label_indexes]
 
+            new_ats.append(np.copy(chosen_ats))
+            new_pred.append(np.full(shape=num_chosen_samples, fill_value=label))
+            index_list = np.arange(selected_so_far, selected_so_far + num_chosen_samples)
+            new_class_matrix_norms_vec[label] = index_list
+            selected_so_far += num_chosen_samples
+
+        self.train_ats = np.concatenate(new_ats)
+        self.train_pred = np.concatenate(new_pred)
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
         self.class_matrix = new_class_matrix_norms_vec
-

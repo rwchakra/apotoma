@@ -196,7 +196,6 @@ class SurpriseAdequacy(ABC):
 
     def prep(self, use_cache: bool = False) -> None:
         """
-
         Prepare class matrix from training activation traces. Class matrix is a dictionary
         with keys as labels and values as lists of positions as predicted by model
 
@@ -209,10 +208,12 @@ class SurpriseAdequacy(ABC):
 
         """
         self._load_or_calc_train_ats(use_cache=use_cache)
-        for i, label in enumerate(self.train_pred):
-            if label not in self.class_matrix:
-                self.class_matrix[label] = []
-            self.class_matrix[label].append(i)
+        if self.config.is_classification:
+            # TODO Switch to numpy magic
+            for i, label in enumerate(self.train_pred):
+                if label not in self.class_matrix:
+                    self.class_matrix[label] = []
+                self.class_matrix[label].append(i)
 
     def clear_cache(self, saved_path: str) -> None:
         """
@@ -464,6 +465,7 @@ class DSA(SurpriseAdequacy):
         futures = []
         dsa = np.empty(shape=target_pred.shape[0])
 
+        print(f"[{self.__class__}] Using {self.train_ats.shape[0]} train samples")
         with ThreadPoolExecutor() as executor:
             while start < num_targets:
 
@@ -475,7 +477,6 @@ class DSA(SurpriseAdequacy):
                     batch = target_pred[start: start + self.dsa_batch_size]
 
                 # Calculate DSA per label
-
                 for label in range(self.config.num_classes):
 
                     def task(t_batch, t_label, t_start):

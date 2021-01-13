@@ -41,46 +41,63 @@ class NormOfDiffsSelectiveDSA(DSA):
         all_train_pred = self.train_pred
 
         new_class_matrix_norms_vec = {}
+        new_ats = []  # Will be concatenated to get new self.train_ats
+        new_pred = []  # Will be concatenated to get new self.train_pred
+        selected_so_far = 0
         for label in range(10):
 
-            data_label = all_train_ats[np.where(all_train_pred == label)]
-            available_indices = np.where(all_train_pred == label)[0]
-
-            indexes = np.arange(available_indices.shape[0])
-            is_available = np.ones(shape=available_indices.shape[0], dtype=bool)
-
             # This index used in the loop indicates the latest element selected to be added to chosen items
-            current_idx = 0
+            ats = all_train_ats[all_train_pred == label]
+            is_available_mask = np.ones(dtype=bool, shape=ats.shape[0])
 
+            chosen_per_label_indexes = []
+
+            i = 0
             while True:
-                # Get all indexes (higher than current_index) which are still available and the corresponding ats
-                candidate_indexes = np.argwhere((indexes > current_idx) & is_available).flatten()
-                candidates = data_label[candidate_indexes]
+                # TODO Remove
+                if len(chosen_per_label_indexes) > 0:
+                    assert np.min(np.linalg.norm(ats[i] - ats[chosen_per_label_indexes], axis=1)) >= self.threshold
 
-                diffs = np.linalg.norm(candidates - data_label[current_idx], axis=1)
-                assert diffs.ndim == 1
 
-                # Identify candidates which are too similar to currently added element (current_idx)
-                # and set their availability to false
-                remove_candidate_indexes = np.flatnonzero(diffs < self.threshold)
-                remove_overall_indexes = candidate_indexes[remove_candidate_indexes]
-                is_available[remove_overall_indexes] = False
+                # Select with (all_train_ats) index i in the selected list of ats
+                # and put its new index in the new matrix
+                current_ats = ats[i]
+                chosen_per_label_indexes.append(i)
 
-                # Select the next available candidate as current_idx (i.e., use select it for use in dsa),
-                #   or break if none available
-                if np.count_nonzero(is_available[current_idx:]) > 1:
-                    current_idx = np.argmax(is_available[current_idx + 1:]) + (current_idx + 1)
-                else:
+                # Current ats is selected and becomes unavailable
+                is_available_mask[i] = False
+
+                # Calculate differences and update is_available_mask
+                avail_ats = ats[is_available_mask]
+                diffs = np.linalg.norm(avail_ats - current_ats, axis=1)
+                is_available_indexes = np.where(is_available_mask)[0]
+                drop_indeces = is_available_indexes[np.where(diffs < self.threshold)]  # TODO switch to thresholds
+                is_available_mask[drop_indeces] = False
+
+                i = np.argmax(is_available_mask)
+                if i == 0:
                     break
 
-            selected_indexes = np.nonzero(is_available)[0]
-            new_class_matrix_norms_vec[label] = list(available_indices[selected_indexes])
+            new_ats.append(ats[chosen_per_label_indexes])
+            new_pred.append(np.full(shape=len(chosen_per_label_indexes), fill_value=label))
+            index_list = np.arange(selected_so_far, selected_so_far + len(chosen_per_label_indexes))
+            new_class_matrix_norms_vec[label] = index_list
+            selected_so_far += len(chosen_per_label_indexes)
 
+        self.train_ats = np.concatenate(new_ats)
+        self.train_pred = np.concatenate(new_pred)
         self.number_of_samples = sum(len(lst) for lst in new_class_matrix_norms_vec.values())
-
         self.class_matrix = new_class_matrix_norms_vec
 
-    def sample_diff_distributions(self, x_subarray: np.ndarray) -> np.ndarray:
+        # TODO move to proper unit test
+        for label in range(10):
+            selected_ats = self.train_ats[self.train_pred == label]
+            for i in range(selected_ats.shape[0] - 1):
+                # Note: This completely ignores labels
+                min_dist = np.min(np.linalg.norm(selected_ats[1 + i:] - selected_ats[i], axis=1))
+                assert min_dist >= self.threshold, f"Found difference {min_dist} < {self.threshold}"
+
+    def sample_diff_distributions(self, x_subarray: np.ndarray, num_samples=100) -> np.ndarray:
         """
         Calculates all differences between the samples passed in the subarray.
         This can be used to guess thresholds for the algorithm.
@@ -89,14 +106,9 @@ class NormOfDiffsSelectiveDSA(DSA):
         :return: Sorted one-dimensional array of differences
         """
         ats, pred = self._calculate_ats(x_subarray)
-        unique_pred = np.unique(pred)
-        differences = []
-        for label in unique_pred:
-            label_indices = np.where(pred == label)
-            values = ats[label_indices]
-            diff_matrix = np.abs(values - np.expand_dims(values, 1))
-            norms = np.linalg.norm(diff_matrix, axis=2)  # Norms
-            indeces_under_diagonal = np.tril_indices(norms.shape[0], -1)
-            diffs = norms[indeces_under_diagonal]
-            differences += list(diffs)
-        return np.array(sorted(differences))
+        differences = np.empty(shape=num_samples)
+        for i in range(num_samples):
+            # Note: This completely ignores labels
+            min_dist = np.min(np.linalg.norm(ats[1 + i:] - ats[i], axis=1))
+            differences[i] = min_dist
+        return np.sort(differences)
