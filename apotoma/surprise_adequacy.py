@@ -2,6 +2,7 @@ import abc
 import os
 import pickle
 from abc import ABC
+from concurrent.futures.thread import ThreadPoolExecutor
 from typing import Tuple, List, Union, Dict
 
 import numpy as np
@@ -252,7 +253,7 @@ class LSA(SurpriseAdequacy):
         self.removed_rows = None
 
     def prep(self, use_cache: bool = False) -> None:
-        super().prep()
+        super().prep(use_cache=use_cache)
         self._load_or_create_likelyhood_estimator(use_cache=use_cache)
 
     def _load_or_create_likelyhood_estimator(self, use_cache=False) -> None:
@@ -455,30 +456,45 @@ class DSA(SurpriseAdequacy):
 
         """
 
-        dsa = np.empty(shape=target_pred.shape[0])
         start = 0
 
         print(f"[{ds_type}] Calculating DSA")
 
         num_targets = target_pred.shape[0]
+        futures = []
+        dsa = np.empty(shape=target_pred.shape[0])
 
-        while start < num_targets:
+        with ThreadPoolExecutor() as executor:
+            while start < num_targets:
 
-            # Select batch
-            diff = num_targets - start
-            if diff < self.dsa_batch_size:
-                batch = target_pred[start:start + diff]
-            else:
-                batch = target_pred[start: start + self.dsa_batch_size]
+                # Select batch
+                diff = num_targets - start
+                if diff < self.dsa_batch_size:
+                    batch = target_pred[start:start + diff]
+                else:
+                    batch = target_pred[start: start + self.dsa_batch_size]
 
-            # Calculate DSA per label
-            for label in range(self.config.num_classes):
-                matches = np.where(batch == label)
-                if len(matches) > 0:
-                    a_min_dist, b_min_dist = self._dsa_distances(label, matches, start, target_ats)
-                    dsa[matches[0] + start] = a_min_dist / b_min_dist
+                # Calculate DSA per label
 
-            start += self.dsa_batch_size
+                for label in range(self.config.num_classes):
+
+                    def task(t_batch, t_label, t_start):
+                        matches = np.where(t_batch == t_label)
+                        if len(matches) > 0:
+                            a_min_dist, b_min_dist = self._dsa_distances(label, matches, start, target_ats)
+                            t_task_dsa = a_min_dist / b_min_dist
+                            return matches[0], t_start, t_task_dsa
+                        else:
+                            return None, None, None
+
+                    futures.append(executor.submit(task, np.copy(batch), np.copy(label), start))
+
+                start += self.dsa_batch_size
+
+        for future in futures:
+            f_idxs, f_start, f_task_dsa = future.result()
+            if f_idxs is not None:
+                dsa[f_idxs + f_start] = f_task_dsa
 
         return dsa
 
