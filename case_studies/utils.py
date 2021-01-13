@@ -8,12 +8,13 @@ import numpy as np
 from dataclasses import dataclass
 from sklearn import metrics
 
+from apotoma.smart_dsa_by_lsa import DSAbyLSA
 from apotoma.smart_dsa_diffnorms import DiffOfNormsSelectiveDSA
 from apotoma.smart_dsa_normdiffs import NormOfDiffsSelectiveDSA
-from apotoma.surprise_adequacy import LSA, DSA, SurpriseAdequacyConfig, SurpriseAdequacy
+from apotoma.surprise_adequacy import DSA, SurpriseAdequacyConfig, SurpriseAdequacy, LSA
 from case_studies import config
 
-# We accept redundant at calculation for now - may change this later
+# Note
 USE_CACHE = False
 
 
@@ -46,15 +47,19 @@ def _get_thresholds(smart_class, model, train_x, sa_config):
                            dsa_batch_size=config.DSA_BATCH_SIZE,
                            threshold=0.1  # Threshold does not matter here
                            )
-    num_samples = 1000  # use subset to estimate thresholds
-    num_in_distr_thresholds = 10  # The number of thresholds collected from the samples
-    sample_diffs = temp_dsa.sample_diff_distributions(train_x[:num_samples])
+    num_samples = train_x.shape[0]  # use subset to estimate thresholds
+    num_sampled_thresholds = 10  # The number of thresholds collected from the samples
+    sample_diffs = temp_dsa.sample_diff_distributions(train_x[:num_samples], num_samples=1000)
     # Take samples uniformly distributed over indexes
-    indexes = np.arange(0, num_in_distr_thresholds - 1) * num_samples
+    indexes = np.floor(np.arange(0, num_sampled_thresholds) * (sample_diffs.shape[0] / num_sampled_thresholds))
     indexes = list(np.floor(indexes).astype(int))
     indexes.append(sample_diffs.shape[0] - 1)
-    in_d_thresholds = sample_diffs[indexes]
-    return list(in_d_thresholds)
+    thresholds = list(sample_diffs[indexes])
+    # Prepend a very small threshold
+    thresholds.insert(0, thresholds[0] / 2)
+    # Append a very large threshold
+    thresholds.append(thresholds[len(thresholds) - 1] * 2)
+    return thresholds
 
 
 def run_experiments(model,
@@ -65,32 +70,48 @@ def run_experiments(model,
 
     nominal_data = test_data.pop("nominal")
 
-    for train_percent in range(5, 101, 5):
-        num_samples = int(train_x.shape[0] * train_percent / 100)
-        train_subset = train_x[:num_samples]
-        # DSA
-        dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
-        dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
-        results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
-        # LSA
-        warnings.warn("LSA temporarily disabled")
-        # lsa = LSA(model=model, train_data=train_subset, config=sa_config)
-        # lsa_custom_info = {"num_samples": num_samples}
-        # results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
+    # Make sure inner lsa is cached for the smart dsa approach afterwards
+    inner_lsa = LSA(model=model, train_data=train_x, config=sa_config)
+    inner_lsa.prep(use_cache=False)
+    lsa_values = inner_lsa._calc_lsa(target_ats=np.copy(inner_lsa.train_ats),
+                                     target_pred=np.copy(inner_lsa.train_pred))
+    # for select_share in range(10, 101, 10):
+    #     select_share /= 100
+    #     dsa_by_lsa = DSAbyLSA(model=model, train_data=train_x, config=sa_config,
+    #                           dsa_batch_size=config.DSA_BATCH_SIZE, select_share=select_share,
+    #                           precomputed_likelihoods=lsa_values)
+    #     custom_info = {
+    #         "select_share": select_share,
+    #         "dsa_batch_size": config.DSA_BATCH_SIZE
+    #     }
+    #     results.append(eval_for_sa(f"dsa_by_lsa_{select_share}", dsa_by_lsa, custom_info, nominal_data, test_data))
+    #
+    #
+    # for train_percent in range(5, 101, 5):
+    #     num_samples = int(train_x.shape[0] * train_percent / 100)
+    #     train_subset = train_x[:num_samples]
+    #     # DSA
+    #     dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=config.DSA_BATCH_SIZE)
+    #     dsa_custom_info = {"sum_samples": num_samples, "dsa_batch_size": config.DSA_BATCH_SIZE}
+    #     results.append(eval_for_sa(f"dsa_rand{train_percent}_perc", dsa, dsa_custom_info, nominal_data, test_data, ))
+    #     # LSA
+    #     lsa = LSA(model=model, train_data=train_subset, config=sa_config)
+    #     lsa_custom_info = {"num_samples": num_samples}
+    #     results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
 
-    thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
-    for diff_threshold in thresholds:
-        dsa = DiffOfNormsSelectiveDSA(model=model,
-                                      train_data=train_x,
-                                      config=sa_config,
-                                      dsa_batch_size=config.DSA_BATCH_SIZE,
-                                      threshold=diff_threshold)
-        dsa_custom_info = {
-            "diff_threshold": diff_threshold,
-            "dsa_batch_size": config.DSA_BATCH_SIZE
-        }
-        results.append(eval_for_sa(f"dsa_don_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
-
+    # thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
+    # for diff_threshold in thresholds:
+    #     dsa = DiffOfNormsSelectiveDSA(model=model,
+    #                                   train_data=train_x,
+    #                                   config=sa_config,
+    #                                   dsa_batch_size=config.DSA_BATCH_SIZE,
+    #                                   threshold=diff_threshold)
+    #     dsa_custom_info = {
+    #         "diff_threshold": diff_threshold,
+    #         "dsa_batch_size": config.DSA_BATCH_SIZE
+    #     }
+    #     results.append(eval_for_sa(f"dsa_don_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
+    #
     thresholds = _get_thresholds(NormOfDiffsSelectiveDSA, model, train_x, sa_config)
     for diff_threshold in thresholds:
         dsa = NormOfDiffsSelectiveDSA(model=model,
@@ -117,7 +138,7 @@ def eval_for_sa(sa_name,
     # TODO split DNN prediction and SA postprocessing (e.g. kde fitting)
     sa.prep(use_cache=USE_CACHE)
     prep_time = time.time() - prep_start_time
-    if isinstance(sa, DiffOfNormsSelectiveDSA) or isinstance(sa, NormOfDiffsSelectiveDSA):
+    if isinstance(sa, DiffOfNormsSelectiveDSA) or isinstance(sa, NormOfDiffsSelectiveDSA) or isinstance(sa, DSAbyLSA):
         approach_custom_info['num_samples'] = sa.number_of_samples
 
     # Create result object
@@ -145,6 +166,7 @@ def eval_for_sa(sa_name,
         combined_surp = np.concatenate((nom_surp, surp))
         ood_auc_roc = metrics.roc_auc_score(is_outlier, combined_surp)
 
+        print(f"Result Preview ({sa_name}): {approach_custom_info['num_samples']} => auc roc {ood_auc_roc}")
         result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
                                                   ood_auc_roc=ood_auc_roc,
                                                   accuracy=accuracy,
