@@ -481,13 +481,13 @@ class DSA(SurpriseAdequacy):
                     def task(t_batch, t_label, t_start):
                         matches = np.where(t_batch == t_label)
                         if len(matches) > 0:
-                            a_min_dist, b_min_dist = self._dsa_distances(label, matches, start, target_ats)
+                            a_min_dist, b_min_dist = self._dsa_distances(t_label, matches, t_start, target_ats)
                             t_task_dsa = a_min_dist / b_min_dist
                             return matches[0], t_start, t_task_dsa
                         else:
                             return None, None, None
 
-                    futures.append(executor.submit(task, np.copy(batch), np.copy(label), start))
+                    futures.append(executor.submit(task, np.copy(batch), label, start))
 
                 start += self.dsa_batch_size
 
