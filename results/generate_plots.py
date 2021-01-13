@@ -153,8 +153,8 @@ lsa_ran100 = []
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/lsa_models/results/mnist/'
 lsa_kdes = os.listdir(root)
 lsa_kdes = [f for f in lsa_kdes if 'kde' in f]
-all_data = []
-tr = []
+all_data = {}
+
 for f in lsa_kdes:
     data_kde = []
     lsa_files = os.listdir(root+f)
@@ -163,20 +163,27 @@ for f in lsa_kdes:
             data_dsa = pickle.load(fb)
 
         data_kde.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
-    all_data.append(data_kde)
-    tr.append(f.split('_')[2])
-# print(dsa_ran50)
-#
-# print(np.mean(dsa_ran50), np.mean(dsa_ran100))
-# print(min(dsa_ran50), min(dsa_ran100))
-# print(max(dsa_ran50), max(dsa_ran100))
-data = [lsa_ran100]
+
+    param = re.findall('\d+\.\d+',f.split('_')[2])
+    if len(param) == 0:
+        if f.split('_')[2] == 'kdescott':
+            all_data[0.53] = data_kde
+
+        else:
+            all_data[0.49] = data_kde
+    else:
+        all_data[param[0]] = data_kde
+
+sorted_rans = sorted(all_data.items(), key=lambda item: float(item[0]), reverse=True)
+sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
+scores_rans = [item[1] for item in sorted_rans]
+
 fig = plt.figure(1, figsize=(9, 6))
 
 # Create an axes instance
 ax = fig.add_subplot(111)
 
-bp = ax.boxplot(all_data, patch_artist=True)
+bp = ax.boxplot(scores_rans, patch_artist=True)
 
 ## change outline color, fill color and linewidth of the boxes
 for box in bp['boxes']:
@@ -201,7 +208,7 @@ for median in bp['medians']:
 for flier in bp['fliers']:
     flier.set(marker='o', color='#e7298a', alpha=0.5)
 
-ax.set_xticklabels(tr)
+ax.set_xticklabels(sorted_rans_thresholds)
 ax.set_ylabel('AUC score')
 ax.set_title('LSA stability over different kernel bandwidths')
-fig.savefig('lsa_thresholds_2.png', bbox_inches='tight')
+fig.savefig('lsa_thresholds_sorted.png', bbox_inches='tight')
