@@ -63,7 +63,7 @@ def prepare_adv_data(model):
 def run_experiments(model_id, model):
     x_train, _, x_test, y_test = _get_dataset()
     advs = prepare_adv_data(model)
-    corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy")
+    corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy") / 255.
     test_data = {
         'nominal': (x_test, y_test),
         'adv_fga_0.5': (advs, y_test),
