@@ -6,7 +6,7 @@ import numpy as np
 import os
 import pickle
 
-files = os.listdir('./mnist')
+files = os.listdir('./cifar10')
 files_dsa = [f for f in files if 'dsa' in f]
 dsa_lsa = {}
 dsa_nods = {}
@@ -25,12 +25,12 @@ for file_dsa in files_dsa:
         type_result = 'by_lsa'
     scores = 0
     times = 0
-    pickle_models = os.listdir('./mnist/'+file_dsa)
+    pickle_models = os.listdir('./cifar10/'+file_dsa)
     for pickle_model in pickle_models:
-        with open('./mnist/'+file_dsa+'/'+pickle_model, 'rb') as f:
+        with open('./cifar10/'+file_dsa+'/'+pickle_model, 'rb') as f:
             data_dsa = pickle.load(f)
-        scores += data_dsa.evals['adv_fga_0.5'].ood_auc_roc
-        times += data_dsa.evals['adv_fga_0.5'].eval_time
+        scores += data_dsa.evals['corrupted_sev_5'].ood_auc_roc
+        times += data_dsa.evals['corrupted_sev_5'].eval_time
 
     if type_result == 'by_lsa':
         param = data_dsa.approach_custom_info['num_samples']
@@ -54,27 +54,27 @@ sorted_rans = sorted(dsa_rans.items(), key=lambda item: float(item[0]), reverse=
 sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
 scores_rans = [item[1][1] for item in sorted_rans]
 
-#Nods smoothing
-dsa_nods_smooth = {}
-dsa_nods_keys = list(set([np.floor(k[0]) for k in dsa_nods.values()]))
-dsa_nods_trunc = {k:[] for k in dsa_nods_keys}
-for tr, item in dsa_nods.items():
-    key = np.floor(item[0])
-    dsa_nods_trunc[key].append((tr, item[1]))
-
-for k,v in dsa_nods_trunc.items():
-    mean_samples = int(sum(value[0] for value in v)/len(v))
-    mean_auc = sum(value[1] for value in v)/len(v)
-    dsa_nods_smooth[mean_samples] = mean_auc
-
-
-sorted_nods = sorted(dsa_nods_smooth.items(), key=lambda item: float(item[0]), reverse=True)
-sorted_nods_thresholds = [float(item[0]) for item in sorted_nods]
-scores_nods = [item[1] for item in sorted_nods]
+# #Nods smoothing
+# dsa_nods_smooth = {}
+# dsa_nods_keys = list(set([np.floor(k[0]) for k in dsa_nods.values()]))
+# dsa_nods_trunc = {k:[] for k in dsa_nods_keys}
+# for tr, item in dsa_nods.items():
+#     key = np.floor(item[0])
+#     dsa_nods_trunc[key].append((tr, item[1]))
+#
+# for k,v in dsa_nods_trunc.items():
+#     mean_samples = int(sum(value[0] for value in v)/len(v))
+#     mean_auc = sum(value[1] for value in v)/len(v)
+#     dsa_nods_smooth[mean_samples] = mean_auc
+#
+#
+# sorted_nods = sorted(dsa_nods_smooth.items(), key=lambda item: float(item[0]), reverse=True)
+# sorted_nods_thresholds = [float(item[0]) for item in sorted_nods]
+# scores_nods = [item[1] for item in sorted_nods]
 
 plt.plot(sorted_dsa_lsa_thresholds, scores, color='maroon')
 plt.plot(sorted_rans_thresholds, scores_rans)
-plt.plot(sorted_nods_thresholds, scores_nods, color='green')
+#plt.plot(sorted_nods_thresholds, scores_nods, color='green')
 
 plt.xlabel('#Points sampled')
 plt.ylabel('AUC score')
