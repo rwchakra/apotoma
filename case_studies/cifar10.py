@@ -81,8 +81,6 @@ def _get_dataset():
 
 
 def run_experiments(model_id, model):
-    if model_id <= 6:
-        return None # TODO delete this condition
     print(f"Starting with model id {model_id}")
     x_train, _, x_test, y_test = _get_dataset()
 
@@ -100,10 +98,10 @@ def run_experiments(model_id, model):
     sa_config = SurpriseAdequacyConfig(
         saved_path=temp_folder,
         is_classification=True,
-        layer_names=["last_dense"],
+        layer_names=["sm_output"],
         ds_name=f"mnist_{model_id}",
         num_classes=10,
-        batch_size=16)
+        batch_size=128)
     results = utils.run_experiments(model=model,
                                     train_x=x_train,
                                     test_data=test_data,
@@ -142,6 +140,6 @@ if __name__ == '__main__':
     # )
 
     model_collection.consume(
-        run_experiments, num_processes=2,
+        run_experiments, num_processes=0,
         # context=TrainContext
     )
