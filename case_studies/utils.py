@@ -29,6 +29,7 @@ class Result:
 
 @dataclass
 class TestSetEval:
+    avg_bw: str
     eval_time: float
     # avg_pr_score: float
     accuracy: float
@@ -63,7 +64,7 @@ def run_experiments(model,
     results = []
 
     nominal_data = test_data.pop("nominal")
-    kde_tr = [0.1, 0.4, 'scott', 'silverman', 1.0, 1.5, 2.0]
+    kde_tr = [0.1, 0.4, 'scott', 'silverman', 1.0, 2.0, 3.0, 5.0]
 
     for bw in kde_tr:
         for train_percent in range(100, 101):
@@ -76,7 +77,7 @@ def run_experiments(model,
             # LSA
             lsa = LSA(model=model, train_data=train_subset, config=sa_config, kde_bw=bw)
             lsa_custom_info = {"num_samples": num_samples}
-            results.append(eval_for_sa(f"lsa_rand_kde{bw}_perc", lsa, lsa_custom_info, nominal_data, test_data))
+            results.append(eval_for_sa(f"lsa_rand_kde{bw}_perc", lsa, lsa_custom_info, nominal_data, test_data, bw))
 
     # thresholds = _get_thresholds(DiffOfNormsSelectiveDSA, model, train_x, sa_config)
     # for diff_threshold in thresholds:
@@ -111,7 +112,8 @@ def eval_for_sa(sa_name,
                 sa: SurpriseAdequacy,
                 approach_custom_info: Dict,
                 nominal_data: Tuple[np.ndarray, np.ndarray],
-                test_data: Dict[str, Tuple[np.ndarray, np.ndarray]]) -> Result:
+                test_data: Dict[str, Tuple[np.ndarray, np.ndarray]],
+                bw:float ) -> Result:
     # Prepare SA (offline)
     prep_start_time = time.time()
     # TODO split DNN prediction and SA postprocessing (e.g. kde fitting)
@@ -123,7 +125,7 @@ def eval_for_sa(sa_name,
     # Create result object
     result = Result(name=sa_name, prepare_time=prep_time, approach_custom_info=approach_custom_info)
 
-    nom_surp, nom_pred = sa.calc(target_data=nominal_data[0], use_cache=USE_CACHE, ds_type='test')
+    nom_surp, nom_pred, avg = sa.calc(target_data=nominal_data[0], use_cache=USE_CACHE, ds_type='test')
 
     for test_set_name, test_set in test_data.items():
         print(f"Evaluating {sa_name} with test set {test_set_name}")
@@ -131,7 +133,7 @@ def eval_for_sa(sa_name,
 
         calc_start = time.time()
         # TODO split DNN prediction and SA calculation
-        surp, pred = sa.calc(target_data=x_test, use_cache=USE_CACHE, ds_type='test')
+        surp, pred, avg = sa.calc(target_data=x_test, use_cache=USE_CACHE, ds_type='test')
         calc_time = time.time() - calc_start
 
         # Used for (outlier-only) misclassification prediction
@@ -145,11 +147,21 @@ def eval_for_sa(sa_name,
         combined_surp = np.concatenate((nom_surp, surp))
         ood_auc_roc = metrics.roc_auc_score(is_outlier, combined_surp)
 
-        result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
-                                                  ood_auc_roc=ood_auc_roc,
-                                                  accuracy=accuracy,
-                                                  num_nominal_samples=nominal_data[0].shape[0],
-                                                  num_outlier_samples=x_test.shape[0])
+        if bw == 'scott' or bw == 'silverman':
+            result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
+                                                      ood_auc_roc=ood_auc_roc,
+                                                      accuracy=accuracy,
+                                                      num_nominal_samples=nominal_data[0].shape[0],
+                                                      num_outlier_samples=x_test.shape[0],
+                                                      avg_bw = bw+avg)
+        else:
+            result.evals[test_set_name] = TestSetEval(eval_time=calc_time,
+                                                      ood_auc_roc=ood_auc_roc,
+                                                      accuracy=accuracy,
+                                                      num_nominal_samples=nominal_data[0].shape[0],
+                                                      num_outlier_samples=x_test.shape[0],
+                                                      avg_bw=avg)
+
 
     return result
 

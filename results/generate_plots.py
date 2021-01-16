@@ -152,30 +152,84 @@ dsa_rans = {}
 lsa_ran100 = []
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/lsa_models/results/mnist/'
 lsa_kdes = os.listdir(root)
-lsa_kdes = [f for f in lsa_kdes if 'kde' in f]
+to_check = ['kde0.1', 'kde0.4', 'kdescott', 'kdesilverman', 'kde1.0', 'kde2.0', 'kde3.0', 'kde5.0']
+lsa_kdes = [f for f in lsa_kdes if f.split('_')[2] in to_check]
+scott = os.listdir(root+'lsa_rand_kdescott_perc')
+silverman = os.listdir(root+'lsa_rand_kdesilverman_perc')
 all_data = {}
+scott_total = 0
+silverman_total = 0
+for f in scott:
+    with open(root + 'lsa_rand_kdescott_perc/'+f, 'rb') as fb:
+        data = pickle.load(fb)
+        avg = data.evals['adv_fga_0.5'].avg_bw
+        avg = re.findall('\d+.\d+', avg)[0]
+        scott_total += float(avg)
 
+for f in silverman:
+    with open(root + 'lsa_rand_kdesilverman_perc/'+f, 'rb') as fb:
+        data = pickle.load(fb)
+        avg = data.evals['adv_fga_0.5'].avg_bw
+        avg = re.findall('\d+.\d+', avg)[0]
+        silverman_total += float(avg)
+
+scott_avg = scott_total/len(scott)
+silverman_avg = silverman_total/len(silverman)
 for f in lsa_kdes:
     data_kde = []
-    lsa_files = os.listdir(root+f)
-    for lsa_file in lsa_files:
-        with open(root + f+'/'+lsa_file, 'rb') as fb:
-            data_dsa = pickle.load(fb)
+    models = os.listdir(root+f)
+    for model in models:
+        with open(root+f+'/'+model, 'rb') as fb:
+            data = pickle.load(fb)
+            data_kde.append(data.evals['adv_fga_0.5'].ood_auc_roc)
 
-        data_kde.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
+    if 'scott' in f:
+        all_data['scott'+str(scott_avg)] = data_kde
+    elif 'silverman' in f:
+        all_data['silverman'+str(silverman_avg)] = data_kde
 
-    param = re.findall('\d+\.\d+',f.split('_')[2])
-    if len(param) == 0:
-        if f.split('_')[2] == 'kdescott':
-            all_data[0.53] = data_kde
-
-        else:
-            all_data[0.49] = data_kde
     else:
+        param = re.findall('\d+\.\d+', f.split('_')[2])
         all_data[param[0]] = data_kde
 
-sorted_rans = sorted(all_data.items(), key=lambda item: float(item[0]), reverse=True)
-sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
+print('blafla')
+#
+# for f in lsa_kdes:
+#     data_kde = []
+#     lsa_files = os.listdir(root+f)
+#     for lsa_file in lsa_files:
+#         with open(root + f+'/'+lsa_file, 'rb') as fb:
+#             data_dsa = pickle.load(fb)
+#
+#         data_kde.append(data_dsa.evals['adv_fga_0.5'].ood_auc_roc)
+#
+#     param = re.findall('\d+\.\d+',f.split('_')[2])
+#     if len(param) == 0:
+#         if f.split('_')[2] == 'kdescott':
+#             all_data[0.53] = data_kde
+#
+#         else:
+#             all_data[0.49] = data_kde
+#     else:
+#         all_data[param[0]] = data_kde
+
+sorted_rans = sorted(all_data.items(), key=lambda item: float(re.findall('\d+.\d+', item[0])[0]), reverse=True)
+#sorted_rans_thresholds = [str(re.findall('\d+.\d+', item[0])[0]) for item in sorted_rans]
+sorted_rans_thresholds = []
+for item in sorted_rans:
+    if 'scott' in item[0]:
+        val = np.round(float(re.findall('\d+.\d+', item[0])[0]), 2)
+        xtick = 'scott'+str(val)
+        sorted_rans_thresholds.append(xtick)
+
+    elif 'silverman' in item[0]:
+        val = np.round(float(re.findall('\d+.\d+', item[0])[0]), 2)
+        xtick = 'silverman' + str(val)
+        sorted_rans_thresholds.append(xtick)
+
+    else:
+        xtick = str(re.findall('\d+.\d+', item[0])[0])
+        sorted_rans_thresholds.append(xtick)
 scores_rans = [item[1] for item in sorted_rans]
 
 fig = plt.figure(1, figsize=(9, 6))
@@ -209,6 +263,7 @@ for flier in bp['fliers']:
     flier.set(marker='o', color='#e7298a', alpha=0.5)
 
 ax.set_xticklabels(sorted_rans_thresholds)
+ax.set_xlabel('Bandwidth')
 ax.set_ylabel('AUC score')
 ax.set_title('LSA stability over different kernel bandwidths')
-fig.savefig('lsa_thresholds_sorted.png', bbox_inches='tight')
+fig.savefig('lsa_thresholds_sorted_proper.png', bbox_inches='tight')

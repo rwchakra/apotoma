@@ -283,7 +283,7 @@ class LSA(SurpriseAdequacy):
             with open(rem_row_path, 'wb') as file:
                 pickle.dump(self.removed_rows, file=file)
 
-    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> Tuple[np.ndarray, np.ndarray]:
+    def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> Tuple[np.ndarray, np.ndarray, str]:
         """
         Return LSA values for target. Note that target_data here means both test and adversarial data. Separate calls in main.
 
@@ -303,7 +303,7 @@ class LSA(SurpriseAdequacy):
 
         print(f"[{ds_type}] Calculating LSA")
         lsa_as_list = self._calc_lsa(target_ats, target_pred)
-        return np.array(lsa_as_list), target_pred
+        return np.array(lsa_as_list), target_pred, self.avg_bw
 
     def _calc_kdes(self) -> Tuple[dict, List[int]]:
         """
@@ -369,6 +369,10 @@ class LSA(SurpriseAdequacy):
 
             kdes[label] = self._create_gaussian_kde(refined_ats)
 
+        bw = 0
+        for k,v in kdes.items():
+            bw += v.factor
+        self.avg_bw = str(bw/len(kdes))
         return kdes, removed_rows
 
 
