@@ -61,6 +61,8 @@ def prepare_adv_data(model):
 
 
 def run_experiments(model_id, model):
+    if model_id < 10:
+        return None
     x_train, _, x_test, y_test = _get_dataset()
     advs = prepare_adv_data(model)
     corrupted = np.load(f"{config.DATASETS_BASE_FOLDER}mnist_corrupted.npy") / 255.

@@ -75,7 +75,7 @@ def run_experiments(model,
     inner_lsa.prep(use_cache=False)
     lsa_values = inner_lsa._calc_lsa(target_ats=np.copy(inner_lsa.train_ats),
                                      target_pred=np.copy(inner_lsa.train_pred))
-    for select_share in range(10, 101, 10):
+    for thresh_count, select_share in enumerate(range(10, 101, 10)):
         select_share /= 100
         dsa_by_lsa = DSAbyLSA(model=model, train_data=train_x, config=sa_config,
                               dsa_batch_size=config.DSA_BATCH_SIZE, select_share=select_share,
@@ -84,7 +84,7 @@ def run_experiments(model,
             "select_share": select_share,
             "dsa_batch_size": config.DSA_BATCH_SIZE
         }
-        results.append(eval_for_sa(f"dsa_by_lsa_{select_share}", dsa_by_lsa, custom_info, nominal_data, test_data))
+        results.append(eval_for_sa(f"dsa_by_lsa_t{thresh_count}", dsa_by_lsa, custom_info, nominal_data, test_data))
 
     for train_percent in range(5, 101, 5):
         num_samples = int(train_x.shape[0] * train_percent / 100)
@@ -99,7 +99,7 @@ def run_experiments(model,
         results.append(eval_for_sa(f"lsa_rand{train_percent}_perc", lsa, lsa_custom_info, nominal_data, test_data))
 
     thresholds = _get_thresholds(NormOfDiffsSelectiveDSA, model, train_x, sa_config)
-    for diff_threshold in thresholds:
+    for thresh_count, diff_threshold in enumerate(thresholds):
         dsa = NormOfDiffsSelectiveDSA(model=model,
                                       train_data=train_x,
                                       config=sa_config,
@@ -109,7 +109,7 @@ def run_experiments(model,
             "diff_threshold": diff_threshold,
             "dsa_batch_size": config.DSA_BATCH_SIZE
         }
-        results.append(eval_for_sa(f"dsa_nod_{diff_threshold}", dsa, dsa_custom_info, nominal_data, test_data))
+        results.append(eval_for_sa(f"dsa_nod_t{thresh_count}", dsa, dsa_custom_info, nominal_data, test_data))
 
     return results
 
