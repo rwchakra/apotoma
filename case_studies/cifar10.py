@@ -11,7 +11,7 @@ import uncertainty_wizard as uwiz
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
-NUM_MODELS = 200
+NUM_MODELS = 10
 
 
 class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
@@ -34,6 +34,13 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
     @classmethod
     def gpu_memory_limit(cls) -> int:
         return 1500
+
+
+class PredictContext(uwiz.models.ensemble_utils.DynamicGpuGrowthContextManager):
+
+    @classmethod
+    def max_sequential_tasks_per_process(cls) -> int:
+        return 1
 
 
 def train_model(model_id):
@@ -99,7 +106,7 @@ def run_experiments(model_id, model):
         saved_path=temp_folder,
         is_classification=True,
         layer_names=["sm_output"],
-        ds_name=f"mnist_{model_id}",
+        ds_name=f"cifar10_{model_id}",
         num_classes=10,
         batch_size=128)
     results = utils.run_experiments(model=model,
@@ -140,6 +147,5 @@ if __name__ == '__main__':
     # )
 
     model_collection.consume(
-        run_experiments, num_processes=0,
-        # context=TrainContext
+        run_experiments, num_processes=1, context=PredictContext
     )
