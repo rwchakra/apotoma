@@ -264,6 +264,6 @@ for flier in bp['fliers']:
 
 ax.set_xticklabels(sorted_rans_thresholds)
 ax.set_xlabel('Bandwidth factor')
-ax.set_ylabel('AUC score')
+ax.set_ylabel('AUC-ROC')
 #ax.set_title('LSA stability over different kernel bandwidths')
 fig.savefig('lsa_thresholds_sorted_proper.png', bbox_inches='tight')
