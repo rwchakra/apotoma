@@ -6,82 +6,102 @@ import numpy as np
 import os
 import pickle
 
-files = os.listdir('./cifar10')
-files_dsa = [f for f in files if 'dsa' in f]
-dsa_lsa = {}
-dsa_nods = {}
-dsa_rans = {}
-
-for file_dsa in files_dsa:
-
-    if 'nod' in file_dsa:
-        type_result = file_dsa.split('_')[1]
-        #param = file_dsa.split('_')[2]
-
-    elif 'rand' in file_dsa:
-        type_result = 'rand'
-        #param = re.findall('\d+', file_dsa.split('_')[1])[0]
-    else:
-        type_result = 'by_lsa'
-    scores = 0
-    times = 0
-    pickle_models = os.listdir('./cifar10/'+file_dsa)
-    for pickle_model in pickle_models:
-        with open('./cifar10/'+file_dsa+'/'+pickle_model, 'rb') as f:
-            data_dsa = pickle.load(f)
-        scores += data_dsa.evals['corrupted_sev_5'].ood_auc_roc
-        times += data_dsa.evals['corrupted_sev_5'].eval_time
-
-    if type_result == 'by_lsa':
-        param = data_dsa.approach_custom_info['num_samples']
-        dsa_lsa[param] = (scores/len(pickle_models), times/len(pickle_models))
-
-    elif type_result == 'nod':
-        param = data_dsa.approach_custom_info['num_samples']
-        dsa_nods[param] = (float(file_dsa.split('_')[2]),scores/len(pickle_models), times/len(pickle_models))
-
-
-    else:
-        param = data_dsa.approach_custom_info['num_samples']
-        dsa_rans[param] = (re.findall('\d+', file_dsa.split('_')[1])[0], scores/len(pickle_models), times/len(pickle_models))
-
-# dons plots
-sorted_dsa_lsa = sorted(dsa_lsa.items(), key=lambda item: float(item[0]), reverse=True)
-sorted_dsa_lsa_thresholds = [int(item[0]) for item in sorted_dsa_lsa]
-scores = [item[1][0] for item in sorted_dsa_lsa]
-
-sorted_rans = sorted(dsa_rans.items(), key=lambda item: float(item[0]), reverse=True)
-sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
-scores_rans = [item[1][1] for item in sorted_rans]
-
-# #Nods smoothing
-# dsa_nods_smooth = {}
-# dsa_nods_keys = list(set([np.floor(k[0]) for k in dsa_nods.values()]))
-# dsa_nods_trunc = {k:[] for k in dsa_nods_keys}
-# for tr, item in dsa_nods.items():
-#     key = np.floor(item[0])
-#     dsa_nods_trunc[key].append((tr, item[1]))
+# files = os.listdir('./mnist')
+# files_dsa = [f for f in files if 'dsa' in f]
+# dsa_lsa = {}
+# dsa_nods = {}
+# dsa_rans = {}
 #
-# for k,v in dsa_nods_trunc.items():
-#     mean_samples = int(sum(value[0] for value in v)/len(v))
-#     mean_auc = sum(value[1] for value in v)/len(v)
-#     dsa_nods_smooth[mean_samples] = mean_auc
+# for file_dsa in files_dsa:
+#
+#     if 'nod' in file_dsa:
+#         type_result = file_dsa.split('_')[1]
+#         #param = file_dsa.split('_')[2]
+#
+#     elif 'rand' in file_dsa:
+#         type_result = 'rand'
+#         #param = re.findall('\d+', file_dsa.split('_')[1])[0]
+#     else:
+#         type_result = 'by_lsa'
+#     scores = 0
+#     times = 0
+#     pickle_models = os.listdir('./mnist/'+file_dsa)
+#     for pickle_model in pickle_models:
+#         with open('./mnist/'+file_dsa+'/'+pickle_model, 'rb') as f:
+#             data_dsa = pickle.load(f)
+#         scores += data_dsa.evals['adv_fga_0.5'].ood_auc_roc
+#         times += data_dsa.evals['adv_fga_0.5'].eval_time
+#
+#     if type_result == 'by_lsa':
+#         param = data_dsa.approach_custom_info['num_samples']
+#         dsa_lsa[param] = (scores/len(pickle_models), times/len(pickle_models))
+#
+#     elif type_result == 'nod':
+#         param = data_dsa.approach_custom_info['num_samples']
+#         dsa_nods[param] = (scores/len(pickle_models), times/len(pickle_models))
 #
 #
-# sorted_nods = sorted(dsa_nods_smooth.items(), key=lambda item: float(item[0]), reverse=True)
-# sorted_nods_thresholds = [float(item[0]) for item in sorted_nods]
-# scores_nods = [item[1] for item in sorted_nods]
-
-plt.plot(sorted_dsa_lsa_thresholds, scores, color='maroon')
-plt.plot(sorted_rans_thresholds, scores_rans)
-#plt.plot(sorted_nods_thresholds, scores_nods, color='green')
-
-plt.xlabel('#Points sampled')
-plt.ylabel('AUC score')
-plt.title('Three sampling methods')
-plt.legend(['BY_LSA', 'RANDOM', 'N-O-D'])
-#plt.savefig('./dsa_plots_mnist/new_dsa_auc_adv_smooth.png')
-plt.show()
+#     else:
+#         param = data_dsa.approach_custom_info['num_samples']
+#         dsa_rans[param] = (re.findall('\d+', file_dsa.split('_')[1])[0], scores/len(pickle_models), times/len(pickle_models))
+#
+# # dons plots
+# sorted_dsa_lsa = sorted(dsa_lsa.items(), key=lambda item: float(item[0]), reverse=True)
+# sorted_dsa_lsa_thresholds = [int(item[0]) for item in sorted_dsa_lsa]
+# scores = [item[1][0] for item in sorted_dsa_lsa]
+#
+# sorted_rans = sorted(dsa_rans.items(), key=lambda item: float(item[0]), reverse=True)
+# sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
+# scores_rans = [item[1][1] for item in sorted_rans]
+#
+# # #Nods smoothing
+# # dsa_nods_smooth = {}
+# # dsa_nods_keys = list(set([np.floor(k[0]) for k in dsa_nods.values()]))
+# # dsa_nods_trunc = {k:[] for k in dsa_nods_keys}
+# # for tr, item in dsa_nods.items():
+# #     key = np.floor(item[0])
+# #     dsa_nods_trunc[key].append((tr, item[1]))
+# #
+# # for k,v in dsa_nods_trunc.items():
+# #     mean_samples = int(sum(value[0] for value in v)/len(v))
+# #     mean_auc = sum(value[1] for value in v)/len(v)
+# #     dsa_nods_smooth[mean_samples] = mean_auc
+# #
+# #
+# sorted_nods = sorted(dsa_nods.items(), key=lambda item: float(item[0]), reverse=True)
+# sorted_nods_thresholds = [float(item[0]) for item in sorted_nods][:-1]
+# scores_nods = [item[1][0] for item in sorted_nods][:-1]
+#
+# lsa_files = os.listdir('./mnist/')
+# lsa_files = [f for f in lsa_files if 'lsa_rand' in f]
+# lsa_rans = {}
+#
+# for f in lsa_files:
+#     s = 0
+#     pickle_models = os.listdir('./mnist/'+f)
+#     for pickle_model in pickle_models:
+#         with open('./mnist/'+f+'/'+pickle_model, 'rb') as fb:
+#             data = pickle.load(fb)
+#
+#         s += data.evals['adv_fga_0.5'].ood_auc_roc
+#
+#     param = data.approach_custom_info['num_samples']
+#     lsa_rans[param] = s/len(pickle_models)
+#
+# sorted_rans_lsa = sorted(lsa_rans.items(), key=lambda item: float(item[0]), reverse=True)
+# sorted_rans_thresholds_lsa = [float(item[0]) for item in sorted_rans_lsa]
+# scores_rans_lsa = [item[1] for item in sorted_rans_lsa]
+#
+# plt.plot(sorted_dsa_lsa_thresholds, scores, color='maroon')
+# plt.plot(sorted_rans_thresholds, scores_rans)
+# plt.plot(sorted_nods_thresholds, scores_nods, color='green')
+# plt.plot(sorted_rans_thresholds_lsa, scores_rans_lsa)
+#
+# plt.xlabel('#Points sampled')
+# plt.ylabel('AUC-ROC')
+# plt.legend(['DSA_BY_LSA', 'RANDOM', 'N-O-D', 'LSA'])
+# plt.savefig('./dsa_plots_mnist/all_dsa_with_lsa_adversarial_100.png')
+#plt.show()
 # # #rans plots
 # sorted_rans = sorted(dsa_rans.items(), key=lambda item: float(item[0]), reverse=True)
 # sorted_rans_thresholds = [float(item[0]) for item in sorted_rans]
@@ -343,6 +363,9 @@ root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/results/mnist/'
 # ax.set_title('Stability of DSA over CIFAR10[corrupted]')
 # fig.savefig('./dsa_plots_cifar10/dsa_cifar10_stability_corrupted.png', bbox_inches='tight')
 
+# root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/results/mnist/'
+# files = os.listdir(root)
+# files = [f for f in files if 'rand100' in f and 'lsa' in f]
 # for f in files:
 #     all_f = os.listdir(root+f)
 #     all_scores = []
@@ -350,6 +373,6 @@ root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/results/mnist/'
 #         with open(root+f+'/'+c, 'rb') as fb:
 #             data = pickle.load(fb)
 #
-#         all_scores.append(data.evals['corrupted_sev_5'].ood_auc_roc)
+#         all_scores.append(data.evals['corrupted'].ood_auc_roc)
 #
-#     print(f, max(all_scores), min(all_scores), np.mean(all_scores))
+#     print(max(all_scores), min(all_scores), max(all_scores)-min(all_scores), np.mean(all_scores), np.median(all_scores), np.std(all_scores))
