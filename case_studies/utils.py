@@ -75,8 +75,9 @@ def time_experiments(model,
         dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=None)
         results.append(_time_result(f"dsa_mt_{train_share}", dsa, x_test=test_x))
 
-    dsa_st = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=1)
-    results.append(_time_result("dsa_st", dsa_st, x_test=test_x))
+        dsa_st = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=1)
+        results.append(_time_result(f"dsa_st_{train_share}", dsa_st, x_test=test_x))
+
     for line in results:
         print(line)
 
