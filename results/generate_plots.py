@@ -219,12 +219,12 @@ sorted_rans_thresholds = []
 for item in sorted_rans:
     if 'scott' in item[0]:
         val = np.round(float(re.findall('\d+.\d+', item[0])[0]), 2)
-        xtick = 'scott'+str(val)
+        xtick = str(val) + "\n" + "Scott"
         sorted_rans_thresholds.append(xtick)
 
     elif 'silverman' in item[0]:
         val = np.round(float(re.findall('\d+.\d+', item[0])[0]), 2)
-        xtick = 'silverman' + str(val)
+        xtick = str(val) + "\n" + "Silverman"
         sorted_rans_thresholds.append(xtick)
 
     else:
@@ -263,7 +263,7 @@ for flier in bp['fliers']:
     flier.set(marker='o', color='#e7298a', alpha=0.5)
 
 ax.set_xticklabels(sorted_rans_thresholds)
-ax.set_xlabel('Bandwidth')
+ax.set_xlabel('Bandwidth factor')
 ax.set_ylabel('AUC score')
-ax.set_title('LSA stability over different kernel bandwidths')
+#ax.set_title('LSA stability over different kernel bandwidths')
 fig.savefig('lsa_thresholds_sorted_proper.png', bbox_inches='tight')
