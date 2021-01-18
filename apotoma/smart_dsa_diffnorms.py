@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import tensorflow as tf
@@ -14,8 +14,9 @@ class DiffOfNormsSelectiveDSA(DSA):
                  train_data: np.ndarray,
                  config: SurpriseAdequacyConfig,
                  threshold=1e-3,
-                 dsa_batch_size=500) -> None:
-        super().__init__(model, train_data, config, dsa_batch_size)
+                 dsa_batch_size: int = 500,
+                 max_workers: Optional[int] = None) -> None:
+        super().__init__(model, train_data, config, dsa_batch_size, max_workers)
         self.threshold = threshold
 
     def _load_or_calc_train_ats(self, use_cache=False) -> None:

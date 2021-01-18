@@ -11,6 +11,8 @@ import uncertainty_wizard as uwiz
 from apotoma.surprise_adequacy import SurpriseAdequacyConfig
 from case_studies import config, utils
 
+
+
 NUM_MODELS = 100
 
 
@@ -35,6 +37,7 @@ class TrainContext(uwiz.models.ensemble_utils.DeviceAllocatorContextManager):
     def gpu_memory_limit(cls) -> int:
         return 1000
 
+
 class EvalContext(TrainContext):
     @classmethod
     def virtual_devices_per_gpu(cls) -> Dict[int, int]:
@@ -42,6 +45,7 @@ class EvalContext(TrainContext):
             0: 2,
             1: 2
         }
+
 
 def prepare_adv_data(model):
     x_train, _, x_test, y_test = _get_dataset()
@@ -60,6 +64,20 @@ def prepare_adv_data(model):
     return np.concatenate(adv).reshape((-1, 28, 28, 1))
 
 
+def run_time_experiments(model_id, model):
+    if model_id > 0:
+        print("time experiments are performed only on the first model")
+    x_train, _, x_test, _ = _get_dataset()
+    temp_folder = "/tmp/" + str(time.time())
+    os.mkdir(temp_folder)
+    sa_config = SurpriseAdequacyConfig(saved_path=temp_folder, is_classification=True, layer_names=["last_dense"],
+                                       ds_name=f"mnist_{model_id}", num_classes=10)
+    utils.time_experiments(model=model,
+                           sa_config=sa_config,
+                           train_x=x_train,
+                           test_x=x_test)
+
+
 def run_experiments(model_id, model):
     if model_id < 10:
         return None
@@ -73,12 +91,8 @@ def run_experiments(model_id, model):
     }
     temp_folder = "/tmp/" + str(time.time())
     os.mkdir(temp_folder)
-    sa_config = SurpriseAdequacyConfig(
-        saved_path=temp_folder,
-        is_classification=True,
-        layer_names=["last_dense"],
-        ds_name=f"mnist_{model_id}",
-        num_classes=10)
+    sa_config = SurpriseAdequacyConfig(saved_path=temp_folder, is_classification=True, layer_names=["last_dense"],
+                                       ds_name=f"mnist_{model_id}", num_classes=10)
     results = utils.run_experiments(model=model,
                                     train_x=x_train,
                                     test_data=test_data,
@@ -127,19 +141,23 @@ def _get_dataset():
 
 
 if __name__ == '__main__':
-    # Prepare dataset in cache
+    # Prepare dataset in local fs cache
     # tf.keras.datasets.mnist.load_data()
 
-    model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
-                                                model_save_path=config.MODELS_BASE_FOLDER + "mnist",
-                                                delete_existing=False,
-                                                expect_model=True)
+    # model_collection = uwiz.models.LazyEnsemble(num_models=NUM_MODELS,
+    #                                             model_save_path=config.MODELS_BASE_FOLDER + "mnist",
+    #                                             delete_existing=False,
+    #                                             expect_model=True)
     # histories = model_collection.create(
     #     train_model, num_processes=8, context=TrainContext
     # )
+    #
+    # model_collection.consume(
+    #     run_experiments, num_processes=0,
+    # )
 
-
-    model_collection.consume(
-        run_experiments, num_processes=0,
-        # context=TrainContext
-    )
+    single_model_ensemble = uwiz.models.LazyEnsemble(num_models=1,
+                                                     model_save_path=config.MODELS_BASE_FOLDER + "mnist",
+                                                     delete_existing=False,
+                                                     expect_model=True)
+    single_model_ensemble.consume(run_time_experiments, num_processes=0)

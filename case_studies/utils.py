@@ -1,7 +1,6 @@
 import os
 import pickle
 import time
-import warnings
 from typing import Dict, Tuple, List
 
 import numpy as np
@@ -60,6 +59,34 @@ def _get_thresholds(smart_class, model, train_x, sa_config):
     # Append a very large threshold
     thresholds.append(thresholds[len(thresholds) - 1] * 2)
     return thresholds
+
+
+def time_experiments(model,
+                     sa_config: SurpriseAdequacyConfig,
+                     train_x: np.ndarray,
+                     test_x: np.ndarray) -> None:
+    results = []
+    for train_share in (0.1, 0.55, 1):
+        num_samples = int(train_x.shape[0] * train_share)
+        train_subset = train_x[:num_samples]
+        lsa = LSA(model=model, train_data=train_subset, config=sa_config)
+        results.append(_time_result(f"lsa_{train_share}", lsa, x_test=test_x))
+
+        dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=None)
+        results.append(_time_result(f"dsa_mt_{train_share}", dsa, x_test=test_x))
+
+    dsa_st = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=1)
+    results.append(_time_result("dsa_st", dsa_st, x_test=test_x))
+    for line in results:
+        print(line)
+
+
+def _time_result(sa_name, sa, x_test):
+    sa.prep(use_cache=False)
+    start = time.time()
+    sa.calc(x_test, ds_type='test', use_cache=False)
+    total_time = time.time() - start
+    return f"{sa_name} : {total_time}"
 
 
 def run_experiments(model,

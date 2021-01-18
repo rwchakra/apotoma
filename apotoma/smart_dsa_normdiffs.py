@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -12,9 +13,10 @@ class NormOfDiffsSelectiveDSA(DSA):
                  model: tf.keras.Model,
                  train_data: np.ndarray,
                  config: SurpriseAdequacyConfig,
-                 threshold=0.05,
-                 dsa_batch_size=500) -> None:
-        super().__init__(model, train_data, config, dsa_batch_size)
+                 threshold: float = 0.05,
+                 dsa_batch_size: int = 500,
+                 max_workers: Optional[int] = None) -> None:
+        super().__init__(model, train_data, config, dsa_batch_size, max_workers)
         self.threshold = threshold
 
     def _load_or_calc_train_ats(self, use_cache=False) -> None:
@@ -57,7 +59,6 @@ class NormOfDiffsSelectiveDSA(DSA):
                 # TODO Remove
                 if len(chosen_per_label_indexes) > 0:
                     assert np.min(np.linalg.norm(ats[i] - ats[chosen_per_label_indexes], axis=1)) >= self.threshold
-
 
                 # Select with (all_train_ats) index i in the selected list of ats
                 # and put its new index in the new matrix

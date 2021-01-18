@@ -422,9 +422,11 @@ class DSA(SurpriseAdequacy):
     def __init__(self, model: tf.keras.Model,
                  train_data: np.ndarray,
                  config: SurpriseAdequacyConfig,
-                 dsa_batch_size=500) -> None:
+                 dsa_batch_size=500,
+                 max_workers=None) -> None:
         super().__init__(model, train_data, config)
         self.dsa_batch_size = dsa_batch_size
+        self.max_workers = max_workers
 
     def calc(self, target_data: np.ndarray, ds_type: str, use_cache=False) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -466,7 +468,7 @@ class DSA(SurpriseAdequacy):
         dsa = np.empty(shape=target_pred.shape[0])
 
         print(f"[{self.__class__}] Using {self.train_ats.shape[0]} train samples")
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             while start < num_targets:
 
                 # Select batch

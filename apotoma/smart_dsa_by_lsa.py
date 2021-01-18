@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -14,8 +15,9 @@ class DSAbyLSA(DSA):
                  config: SurpriseAdequacyConfig,
                  select_share: float,
                  dsa_batch_size=500,
-                 precomputed_likelihoods: np.ndarray = None) -> None:
-        super().__init__(model, train_data, config, dsa_batch_size)
+                 precomputed_likelihoods: np.ndarray = None,
+                 max_workers: Optional[int] = None) -> None:
+        super().__init__(model, train_data, config, dsa_batch_size, max_workers)
         self.select_share = select_share
         self.precomputed_likelihoods = precomputed_likelihoods
 
