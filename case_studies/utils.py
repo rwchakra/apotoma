@@ -66,17 +66,17 @@ def time_experiments(model,
                      train_x: np.ndarray,
                      test_x: np.ndarray) -> None:
     results = []
-    for train_share in (0.1, 0.55, 1):
+    for train_share in (0.1, 0.15, 0.2, 0.25, 0.30, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1):
         num_samples = int(train_x.shape[0] * train_share)
         train_subset = train_x[:num_samples]
         lsa = LSA(model=model, train_data=train_subset, config=sa_config)
         results.append(_time_result(f"lsa_{train_share}", lsa, x_test=test_x))
 
-        dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=None)
-        results.append(_time_result(f"dsa_mt_{train_share}", dsa, x_test=test_x))
+        #dsa = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=None)
+        #results.append(_time_result(f"dsa_mt_{train_share}", dsa, x_test=test_x))
 
-    dsa_st = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=1)
-    results.append(_time_result("dsa_st", dsa_st, x_test=test_x))
+        dsa_st = DSA(model=model, train_data=train_subset, config=sa_config, dsa_batch_size=500, max_workers=1)
+        results.append(_time_result("dsa_st_"+str(train_share), dsa_st, x_test=test_x))
     for line in results:
         print(line)
 
@@ -191,6 +191,6 @@ def eval_for_sa(sa_name,
 
 def save_results_to_fs(case_study: str, results: List[Result], model_id=int) -> None:
     for res in results:
-        os.makedirs(f"../results/{case_study}/{res.name}", exist_ok=True)
-        with open(f"../results/{case_study}/{res.name}/model_{model_id}.pickle", "wb+") as f:
+        os.makedirs(f"/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/mnist_19012021/results/{case_study}/{res.name}", exist_ok=True)
+        with open(f"/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/mnist_19012021/results/{case_study}/{res.name}/model_{model_id}.pickle", "wb+") as f:
             pickle.dump(res, file=f)

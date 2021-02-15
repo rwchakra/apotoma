@@ -29,8 +29,8 @@ import pickle
 #     for pickle_model in pickle_models:
 #         with open('./mnist/'+file_dsa+'/'+pickle_model, 'rb') as f:
 #             data_dsa = pickle.load(f)
-#         scores += data_dsa.evals['adv_fga_0.5'].ood_auc_roc
-#         times += data_dsa.evals['adv_fga_0.5'].eval_time
+#         scores += data_dsa.evals['corrupted'].ood_auc_roc
+#         times += data_dsa.evals['corrupted'].eval_time
 #
 #     if type_result == 'by_lsa':
 #         param = data_dsa.approach_custom_info['num_samples']
@@ -83,7 +83,7 @@ import pickle
 #         with open('./mnist/'+f+'/'+pickle_model, 'rb') as fb:
 #             data = pickle.load(fb)
 #
-#         s += data.evals['adv_fga_0.5'].ood_auc_roc
+#         s += data.evals['corrupted'].ood_auc_roc
 #
 #     param = data.approach_custom_info['num_samples']
 #     lsa_rans[param] = s/len(pickle_models)
@@ -99,8 +99,8 @@ import pickle
 #
 # plt.xlabel('#Points sampled')
 # plt.ylabel('AUC-ROC')
-# plt.legend(['DSA_BY_LSA', 'RANDOM', 'N-O-D', 'LSA'])
-# plt.savefig('./dsa_plots_mnist/all_dsa_with_lsa_adversarial_100.png')
+# plt.legend(['DSA (unsurprising-first)', 'DSA (uniform)', 'DSA (neighbor-free)', 'LSA (uniform)'])
+# plt.savefig('./dsa_plots_mnist/all_dsa_with_lsa_corrupted_100_newlegend.png')
 #plt.show()
 # # #rans plots
 # sorted_rans = sorted(dsa_rans.items(), key=lambda item: float(item[0]), reverse=True)
@@ -376,3 +376,14 @@ root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/results/mnist/'
 #         all_scores.append(data.evals['corrupted'].ood_auc_roc)
 #
 #     print(max(all_scores), min(all_scores), max(all_scores)-min(all_scores), np.mean(all_scores), np.median(all_scores), np.std(all_scores))
+#
+thresholds =[10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+lsa_s = [0.853, 1.059, 1.579, 1.646, 1.813, 1.894, 2.110, 2.332,  2.511, 2.571, 2.674, 2.792, 2.782, 3.051, 3.176, 3.260, 3.375, 3.490,  3.566]
+dsa_s = [2.714, 3.784, 5.451, 6.729, 8.032, 9.140, 10.470, 11.807, 12.457, 13.792, 14.761, 16.066, 17.922, 18.318, 19.586, 20.848,  21.909, 23.980, 25.162]
+plt.bar(thresholds, lsa_s, color='maroon', width=5)
+plt.bar(np.array(thresholds)+1, dsa_s, color='blue')
+plt.xlabel('%age points sampled')
+plt.ylabel('Time (s)')
+
+plt.legend(['LSA', 'DSA'])
+plt.savefig('lsa_dsa_random_times.png')
