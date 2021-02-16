@@ -10,7 +10,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D, ZeroPadding2D, AveragePooling2D
 
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.callbacks import Callback
+from tensorflow.keras.callbacks import EarlyStopping
 
 CLIP_MIN = -0.5
 CLIP_MAX = 0.5
@@ -89,14 +89,14 @@ class Model():
         model.fit(
             x_train,
             y_train,
-            epochs=20,
+            epochs=10,
             batch_size=128,
             shuffle=True,
             verbose=1,
             validation_data=(x_test, y_test),
         )
 
-        model.save("./model/model_outexp_{}.h5".format(args.d))
+        model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_{}.h5".format(args.d))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -104,5 +104,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert args.d in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
 
-    model = Model()
+    model = Model(args)
     model.train()
