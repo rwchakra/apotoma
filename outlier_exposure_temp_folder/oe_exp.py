@@ -19,12 +19,26 @@ def forward_activations(model, x, training):
 
     return y_, outputs
 
-def train(train_image_generator_in, train_image_generator_out):
+def train(model, train_datagen):
     train_loss_results = []
     train_accuracy_results = []
+    root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
 
-    num_epochs = 201
+    train_image_generator_out = train_datagen.flow_from_directory(
+        root + 'ImageNet-Datasets-Downloader/dataset/imagenet_images/', batch_size=32, target_size=(32, 32))
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    x_train = x_train.astype("float32")
+    x_test = x_test.astype("float32")
+    x_train = (x_train / 255.0)
+    x_test = (x_test / 255.0)
+
+    y_train = utils.to_categorical(y_train, 10)
+    y_test = utils.to_categorical(y_test, 10)
+    train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=32)
+
+    num_epochs = 10
     epoch_loss_avg = tf.keras.metrics.Mean()
+    m = tf.keras.metrics.CategoricalCrossentropy()
     epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
     optimizer = tf.keras.optimizers.Adam()
 
@@ -33,15 +47,15 @@ def train(train_image_generator_in, train_image_generator_out):
 
         # Training loop - using batches of 32
         for d_in, d_out in zip(train_image_generator_in, train_image_generator_out):
-            data = keras.layers.concatenate()[d_in, d_out]
+            data = tf.keras.layers.concatenate([d_in[0], d_out[0]], axis=0)
             target = d_in[1]
-            target = utils.to_categorical(target)
             # Optimize the model
             activations, grads, layer_activations = grad(model, data)
-            pre_softmax = layer_activations[::-1]
+            pre_softmax = layer_activations[-2]
 
-            loss_value = tf.keras.metrics.CategoricalCrossentropy()(activations[:len(d_in)], target)
-            loss_value += 0.5 * - tf.reduce_mean(tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[d_in[0]:], 1))
+            loss_value = m.update_state(activations[:len(d_in[0])], target)
+            uniform_loss = tf.reduce_mean(tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[d_in[0]:], 1))
+            loss_value += 0.5 * -uniform_loss
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
             # Track progress
@@ -61,25 +75,24 @@ def train(train_image_generator_in, train_image_generator_out):
                                                                         epoch_accuracy.result()))
 
 
-root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
+
 train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
         horizontal_flip=True)
 
-train_image_generator_out = train_datagen.flow_from_directory(
-    root+'ImageNet-Datasets-Downloader/dataset/imagenet_images/', batch_size=32, target_size=(32, 32))
+
+
+
 
 opt = Adam(learning_rate=1e-5)
+root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
 model = load_model(root+'model/model_outexp_cifar.h5')
 
 model.compile(loss='categorical_crossentropy',
               optimizer=opt,
               metrics=['accuracy'])
 
-earlystopping = EarlyStopping(monitor = 'accuracy', verbose=1,
-                              min_delta=0.01, patience=3, mode='max')
-
-callbacks_list = [earlystopping]
+train(model, train_datagen)
 
