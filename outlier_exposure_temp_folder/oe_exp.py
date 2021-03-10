@@ -5,6 +5,8 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
+import tensorflow.keras.backend as K
+from scipy.special import softmax as sf
 
 def grad(model, inputs):
   with tf.GradientTape() as tape:
@@ -14,10 +16,16 @@ def grad(model, inputs):
 def forward_activations(model, x, training):
   # training=training is needed only if there are layers with different
   # behavior during training versus inference (e.g. Dropout).
-    y_ = model(x, training=training)
+    #y_ = model(x, training=training)
     outputs = [layer.output for layer in model.layers]
 
-    return y_, outputs
+
+    pre_softmax = outputs[-2]
+    get_output = K.function([model.input],
+                        [outputs[-1], pre_softmax], K.set_learning_phase(1))
+    [softmax, predictions_pre] = get_output([x])
+
+    return softmax, predictions_pre
 
 def train(model, train_datagen):
     train_loss_results = []
@@ -50,8 +58,7 @@ def train(model, train_datagen):
             data = tf.keras.layers.concatenate([d_in[0], d_out[0]], axis=0)
             target = d_in[1]
             # Optimize the model
-            activations, grads, layer_activations = grad(model, data)
-            pre_softmax = layer_activations[-2]
+            activations, grads, pre_softmax = grad(model, data)
 
             loss_value = m.update_state(activations[:len(d_in[0])], target)
             uniform_loss = tf.reduce_mean(tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[d_in[0]:], 1))
