@@ -29,6 +29,7 @@ import numpy as np
 #     return y_, predictions_pre
 
 def train(model, train_datagen):
+
     train_loss_results = []
     train_accuracy_results = []
     root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
@@ -38,18 +39,17 @@ def train(model, train_datagen):
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     x_train = x_train.astype("float32")
     x_test = x_test.astype("float32")
-    x_train = (x_train / 255.0)
-    x_test = (x_test / 255.0)
+    #x_train = (x_train / 255.0)
+    #x_test = (x_test / 255.0)
 
     y_train = utils.to_categorical(y_train, 10)
     y_test = utils.to_categorical(y_test, 10)
-    train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=32)
-
+    train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=32, shuffle=False)
     num_epochs = 10
     epoch_loss_avg = tf.keras.metrics.Mean()
     m = tf.keras.losses.CategoricalCrossentropy()
     epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
 
     for epoch in range(num_epochs):
 
@@ -70,7 +70,7 @@ def train(model, train_datagen):
                 get_output = K.function([model.input],
                                         [pre_softmax], K.set_learning_phase(1))
                 [pre_softmax] = get_output([data])
-                loss_value = tf.reduce_mean(m(activations[:len(d_in[0])], target))
+                loss_value = m(activations[:len(d_in[0])], target)
                 uniform_loss = tf.reduce_mean(
                 tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[len(d_in[0]):], 1))
                 loss_value = tf.keras.layers.Add()([loss_value, -0.5*uniform_loss])
@@ -116,6 +116,7 @@ model = load_model(root+'model/model_outexp_cifar.h5')
 # model.compile(loss='categorical_crossentropy',
 #               optimizer=opt,
 #               metrics=['accuracy'])
+
 
 train(model, train_datagen)
 

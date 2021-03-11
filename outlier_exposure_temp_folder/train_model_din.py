@@ -80,11 +80,11 @@ class Model():
         model = Sequential()
         for layer in layers:
             model.add(layer)
-        model.add(Activation("softmax"))
-
+        #model.add(Activation("softmax"))
+        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
         print(model.summary())
         model.compile(
-            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+            loss=loss, optimizer="adam", metrics=["accuracy"])
 
         model.fit(
             x_train,
@@ -96,7 +96,7 @@ class Model():
             validation_data=(x_test, y_test),
         )
 
-        model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_{}.h5".format(args.d))
+        model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_nosm{}.h5".format(args.d))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
