@@ -8,26 +8,25 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from scipy.special import softmax as sf
 import numpy as np
-
-def grad(model, inputs):
-    #TODO tape.gradient needs to compute on loss, not softmax. Find a way without breaking the graph
-  with tf.GradientTape() as tape:
-    softmax, acts = forward_activations(model, inputs, training=True)
-  return softmax, tape.gradient(softmax, model.trainable_variables), acts
-
-def forward_activations(model, x, training):
-  # training=training is needed only if there are layers with different
-  # behavior during training versus inference (e.g. Dropout).
-    y_ = model(x, training=training)
-    outputs = [layer.output for layer in model.layers]
-
-
-    pre_softmax = outputs[-2]
-    get_output = K.function([model.input],
-                        [pre_softmax], K.set_learning_phase(1))
-    [predictions_pre] = get_output([x])
-
-    return y_, predictions_pre
+#
+# def grad(model, inputs):
+#   with tf.GradientTape() as tape:
+#     softmax, acts = forward_activations(model, inputs, training=True)
+#   return softmax, tape.gradient(softmax, model.trainable_variables), acts
+#
+# def forward_activations(model, x, training):
+#   # training=training is needed only if there are layers with different
+#   # behavior during training versus inference (e.g. Dropout).
+#     y_ = model(x, training=training)
+#     outputs = [layer.output for layer in model.layers]
+#
+#
+#     pre_softmax = outputs[-2]
+#     get_output = K.function([model.input],
+#                         [pre_softmax], K.set_learning_phase(1))
+#     [predictions_pre] = get_output([x])
+#
+#     return y_, predictions_pre
 
 def train(model, train_datagen):
     train_loss_results = []
@@ -50,34 +49,45 @@ def train(model, train_datagen):
     epoch_loss_avg = tf.keras.metrics.Mean()
     m = tf.keras.losses.CategoricalCrossentropy()
     epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
-    optimizer = tf.keras.optimizers.Adam()
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
 
     for epoch in range(num_epochs):
 
         epoch_loss = 0
         epoch_acc = 0
+        loss_avg = 0.0
+        step = 0
         # Training loop - using batches of 32
         for d_in, d_out in zip(train_image_generator_in, train_image_generator_out):
             data = tf.keras.layers.concatenate([d_in[0], d_out[0]], axis=0)
             target = d_in[1]
             # Below, instead of calling function, maybe just write the code here
+            with tf.GradientTape() as tape:
+                activations = model(data, training=True)
+                outputs = [layer.output for layer in model.layers]
 
-            activations, grads, pre_softmax = grad(model, data)
+                pre_softmax = outputs[-2]
+                get_output = K.function([model.input],
+                                        [pre_softmax], K.set_learning_phase(1))
+                [pre_softmax] = get_output([data])
+                loss_value = tf.reduce_mean(m(activations[:len(d_in[0])], target))
+                uniform_loss = tf.reduce_mean(
+                tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[len(d_in[0]):], 1))
+                loss_value = tf.keras.layers.Add()([loss_value, -0.5*uniform_loss])
+            grads = tape.gradient(loss_value, model.trainable_variables)
 
-            loss_value = m(activations[:len(d_in[0])], target).numpy()
-            uniform_loss = tf.reduce_mean(tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[len(d_in[0]):], 1))
-            loss_value += 0.5 * -uniform_loss.numpy()
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
             # Track progress
-            epoch_loss += loss_value
-            epoch_acc += epoch_accuracy([target], [activations[:len(d_in[0])]]).numpy()
-            #epoch_loss_avg.update_state(K.constant(loss_value))  # Add current batch loss
-            # Compare predicted label to actual label
-            # training=True is needed only if there are layers with different
-            # behavior during training versus inference (e.g. Dropout).
-            #epoch_accuracy.update_state([target], [activations[:len(d_in[0])]])
+            loss_avg = loss_avg * 0.8 + float(loss_value) * 0.2
 
+            if step % 100 == 0:
+                print(
+                    "Training loss (for one batch) at step %d: %.4f"
+                    % (step, float(loss_avg))
+                )
+                print("Seen so far: %s samples" % ((step + 1) * 32))
+            step += 1
         # End epoch
         train_loss_results.append(np.mean(epoch_loss))
         train_accuracy_results.append(np.mean(epoch_acc))
@@ -103,9 +113,9 @@ opt = Adam(learning_rate=1e-5)
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
 model = load_model(root+'model/model_outexp_cifar.h5')
 
-model.compile(loss='categorical_crossentropy',
-              optimizer=opt,
-              metrics=['accuracy'])
+# model.compile(loss='categorical_crossentropy',
+#               optimizer=opt,
+#               metrics=['accuracy'])
 
 train(model, train_datagen)
 
