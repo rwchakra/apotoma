@@ -89,14 +89,14 @@ class Model():
         model.fit(
             x_train,
             y_train,
-            epochs=10,
+            epochs=30,
             batch_size=128,
             shuffle=True,
             verbose=1,
             validation_data=(x_test, y_test),
         )
 
-        model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_nosm{}.h5".format(args.d))
+        model.save("D:\Rwiddhi\Github\model\model_outexp_nosm{}.h5".format(args.d))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
