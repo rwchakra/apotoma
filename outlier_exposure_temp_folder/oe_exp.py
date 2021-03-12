@@ -35,7 +35,7 @@ def train(model, train_datagen):
     root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
 
     train_image_generator_out = train_datagen.flow_from_directory(
-        root + 'ImageNet-Datasets-Downloader/dataset/imagenet_images/', batch_size=32, target_size=(32, 32))
+        root + 'ImageNet-Datasets-Downloader/dataset_new/imagenet_images/', batch_size=32, target_size=(32, 32))
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     x_train = x_train.astype("float32")
     x_test = x_test.astype("float32")
@@ -47,7 +47,7 @@ def train(model, train_datagen):
     train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=32, shuffle=False)
     num_epochs = 10
     epoch_loss_avg = tf.keras.metrics.Mean()
-    m = tf.keras.losses.CategoricalCrossentropy()
+    m = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
     epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
 
@@ -63,14 +63,14 @@ def train(model, train_datagen):
             target = d_in[1]
             # Below, instead of calling function, maybe just write the code here
             with tf.GradientTape() as tape:
-                activations = model(data, training=True)
-                outputs = [layer.output for layer in model.layers]
+                pre_softmax = model(data, training=True)
+                #outputs = [layer.output for layer in model.layers]
 
-                pre_softmax = outputs[-2]
-                get_output = K.function([model.input],
-                                        [pre_softmax], K.set_learning_phase(1))
-                [pre_softmax] = get_output([data])
-                loss_value = m(activations[:len(d_in[0])], target)
+                # pre_softmax = outputs[-2]
+                # get_output = K.function([model.input],
+                #                         [pre_softmax], K.set_learning_phase(1))
+                # [pre_softmax] = get_output([data])
+                loss_value = m(target, pre_softmax[:len(d_in[0])])
                 uniform_loss = tf.reduce_mean(
                 tf.reduce_mean(pre_softmax[len(d_in[0]):], 1) - tf.reduce_logsumexp(pre_softmax[len(d_in[0]):], 1))
                 loss_value = tf.keras.layers.Add()([loss_value, -0.5*uniform_loss])
@@ -81,13 +81,7 @@ def train(model, train_datagen):
             # Track progress
             loss_avg = loss_avg * 0.8 + float(loss_value) * 0.2
 
-            if step % 100 == 0:
-                print(
-                    "Training loss (for one batch) at step %d: %.4f"
-                    % (step, float(loss_avg))
-                )
-                print("Seen so far: %s samples" % ((step + 1) * 32))
-            step += 1
+            epoch_loss.append(loss_avg)
         # End epoch
         train_loss_results.append(np.mean(epoch_loss))
         train_accuracy_results.append(np.mean(epoch_acc))
@@ -111,7 +105,7 @@ train_datagen = ImageDataGenerator(
 
 opt = Adam(learning_rate=1e-5)
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
-model = load_model(root+'model/model_outexp_cifar.h5')
+model = load_model(root+'model/model_outexp_nosmcifar.h5')
 
 # model.compile(loss='categorical_crossentropy',
 #               optimizer=opt,
