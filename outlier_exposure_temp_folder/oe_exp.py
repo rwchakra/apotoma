@@ -36,16 +36,16 @@ def train(model, train_datagen):
     root = "D:\Rwiddhi\Github"
 
     train_image_generator_out = train_datagen.flow_from_directory(
-        root + '\ImageNet-Datasets-Downloader\dataset_new\imagenet_images', batch_size=32, target_size=(32, 32))
+        root + '\ImageNet-Datasets-Downloader\dataset_new\imagenet_images', batch_size=64, target_size=(32, 32))
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     x_train = x_train.astype("float32")
     x_test = x_test.astype("float32")
-    #x_train = (x_train / 255.0)
-    #x_test = (x_test / 255.0)
+    # x_train = (x_train / 255.0)
+    # x_test = (x_test / 255.0)
 
     y_train = utils.to_categorical(y_train, 10)
     y_test = utils.to_categorical(y_test, 10)
-    train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=32, shuffle=False)
+    train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=False)
     num_epochs = 10
     epoch_loss_avg = tf.keras.metrics.Mean()
     m = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -57,11 +57,14 @@ def train(model, train_datagen):
         epoch_loss = []
         epoch_acc = []
         loss_avg = 0.0
-        step = 0
+        step = int(x_train.shape[0] / 64)
         # Training loop - using batches of 32
-        for d_in, d_out in tqdm.tqdm(zip(train_image_generator_in, train_image_generator_out)):
+        for d_in, d_out in tqdm.tqdm(zip(train_image_generator_in, train_image_generator_out), total=step):
             data = tf.keras.layers.concatenate([d_in[0], d_out[0]], axis=0)
             target = d_in[1]
+            step -= 1
+            if step == 0:
+                break
             # Below, instead of calling function, maybe just write the code here
             with tf.GradientTape() as tape:
                 pre_softmax = model(data, training=True)
@@ -96,9 +99,10 @@ def train(model, train_datagen):
 
 train_datagen = ImageDataGenerator(
         rescale=1./255,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True)
+        # shear_range=0.2,
+        # zoom_range=0.2,
+        # horizontal_flip=True
+)
 
 
 

@@ -10,3 +10,4 @@
 /docs/_build/
 
 /apotoma.egg-info/
+/ImageNet-Datasets-Downloader/dataset_new/imagenet_images/
