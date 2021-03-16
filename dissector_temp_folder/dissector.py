@@ -176,15 +176,17 @@ class Dissector:
 
             if growth_type == 'linear':
 
-                y = alpha * l_number + 1
-
+                #y = alpha * l_number + 1
+                y = l_number
             elif growth_type == 'logarithmic':
 
-                y = alpha * np.log(l_number) + 1
+                #y = alpha * np.log(l_number) + 1
+                y = np.log(l_number)
 
             else:
 
-                y = np.exp(alpha * l_number)
+                #y = np.exp(alpha * l_number)
+                y = np.exp(l_number)
 
             weights[i] = y
 
