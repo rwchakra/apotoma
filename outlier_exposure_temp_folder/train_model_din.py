@@ -80,21 +80,22 @@ class Model():
         model = Sequential()
         for layer in layers:
             model.add(layer)
-        model.add(Activation("softmax"))
-
+        #model.add(Activation("softmax"))
+        loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
         print(model.summary())
         model.compile(
-            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+            loss=loss, optimizer="adam", metrics=["accuracy"])
 
         model.fit(
             x_train,
             y_train,
-            epochs=10,
+            epochs=30,
             batch_size=128,
             shuffle=True,
             verbose=1,
             validation_data=(x_test, y_test),
         )
+
 
         model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_{}.h5".format(args.d))
 
