@@ -14,7 +14,7 @@ def train(model, train_datagen):
 
     train_loss_results = []
     train_accuracy_results = []
-    root = "D:\Rwiddhi\Github"
+    root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
 
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
     x_train = x_train.reshape(-1, 28, 28, 1)
@@ -27,7 +27,7 @@ def train(model, train_datagen):
     y_test = utils.to_categorical(y_test, 10)
 
     train_image_generator_out = tf.data.Dataset.from_generator(lambda: train_datagen.flow_from_directory(
-        root + '\ImageNet-Datasets-Downloader\dataset_new\imagenet_images', batch_size=32, target_size=(28, 28), color_mode='grayscale'),
+        root + '/ImageNet-Datasets-Downloader/dataset_new/imagenet_images', batch_size=32, target_size=(28, 28), color_mode='grayscale'),
         output_types= (tf.float32, tf.int16))
 
     train_image_generator_in = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(32)
@@ -35,9 +35,9 @@ def train(model, train_datagen):
     #train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=False)
     num_epochs = 10
     epoch_loss_avg = tf.keras.metrics.Mean()
-    m = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    m = tf.keras.losses.CategoricalCrossentropy()
     epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-5)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 
     for epoch in range(num_epochs):
 
@@ -76,7 +76,7 @@ def train(model, train_datagen):
         if epoch % 1 == 0:
             print("Epoch {:03d}: Loss: {:.3f}".format(epoch,np.mean(epoch_loss)))
 
-    model.save("D:\Rwiddhi\Github\model\model_mnist_finetuned.h5")
+    model.save(root+"/model/model_mnist_finetuned.h5")
 
 
 train_datagen = ImageDataGenerator(
@@ -88,8 +88,8 @@ train_datagen = ImageDataGenerator(
 
 opt = Adam(learning_rate=1e-5)
 
-root = "D:\Rwiddhi\Github"
-model = load_model(root+'\model\model_mnist.h5')
+root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
+model = load_model(root+'/model/model_mnist.h5')
 
 # model.compile(loss='categorical_crossentropy',
 #               optimizer=opt,

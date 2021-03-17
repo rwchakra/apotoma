@@ -4,16 +4,16 @@ from tensorflow.keras.models import load_model
 import foolbox
 
 badge_size = 500
-model = load_model('model\model_mnist_finetuned.h5')
-root = 'D:\Rwiddhi\Github\\'
+model = load_model('model/model_outexp_nosmcifar_finetuned.h5')
+root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
 
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 x_train = x_train.astype("float32") / 255
 x_test = x_test.astype("float32") / 255
 x_train = np.expand_dims(x_train, -1)
 x_test = np.expand_dims(x_test, -1)
 y_train = tf.keras.utils.to_categorical(y_train, 10)
-x_test = np.reshape(x_test, (-1, badge_size, 28, 28, 1))
+x_test = np.reshape(x_test, (-1, badge_size, 32, 32, 3))
 y_test = np.reshape(y_test, (-1, badge_size))
 
 adv = []
@@ -28,6 +28,6 @@ for i in range(x_test.shape[0]):
     adv_labels.extend(y_test[i])
     print(f"Completed foolbox batch {i}")
 
-advs = np.concatenate(adv).reshape((-1, 28, 28, 1))
-np.save(root+'\ood_data\mnist_finetuned_base_model_adv.npy', advs)
-np.save(root+'\ood_data\mnist_finetuned_base_model_adv_labels.npy', adv_labels)
+advs = np.concatenate(adv).reshape((-1, 32, 32, 3))
+np.save(root+'/ood_data/outexp_nosmcifar_finetune_adv.npy', advs)
+np.save(root+'/ood_data/outexp_nosmcifar_finetune_adv_labels.npy', adv_labels)
