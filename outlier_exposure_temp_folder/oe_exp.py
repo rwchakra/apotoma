@@ -1,10 +1,12 @@
 import tqdm
 from tensorflow import keras
 from tensorflow.keras import utils
+
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
+
 import tensorflow as tf
 import tensorflow.keras.backend as K
 from scipy.special import softmax as sf
@@ -79,6 +81,7 @@ def train(model, train_datagen):
     model.save(root+"/model/model_mnist_finetuned.h5")
 
 
+root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
 train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
