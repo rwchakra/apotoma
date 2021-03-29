@@ -10,6 +10,7 @@ import torchvision.transforms as trn
 import torch.utils.data as data
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 from PIL import Image
 
@@ -466,9 +467,15 @@ for img, label in zip(test_data.data, test_data.targets):
         severity_c[c, severity - 1] = np.uint8(corruption(convert_img(img)))
 
 
-    all_corruptions.append(method_name)
+    #test = severity_c[0]
+    #np.save('ood_data/cifar10-c/test.npy', test)
+    #plt.imshow(test)
+    #plt.show()
 
-np.save('./cifar10-c/corrupted_images.npy', severity_c)
-np.save('./cifar10-c/all_corruptions.npy', all_corruptions)
+    all_corruptions.append(method_name)
+    c += 1
+
+np.save('ood_data/cifar10-c/corrupted_images_v2.npy', severity_c)
+np.save('ood_data/cifar10-c/all_corruptions_v2.npy', all_corruptions)
 
 assert severity_c.shape == (10000, 5, 32, 32, 3)
