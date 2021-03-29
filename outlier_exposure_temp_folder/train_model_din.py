@@ -96,7 +96,8 @@ class Model():
             validation_data=(x_test, y_test),
         )
 
-        model.save("D:\Rwiddhi\Github\model\model_outexp_nosm{}.h5".format(args.d))
+
+        model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/model/model_outexp_{}.h5".format(args.d))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
