@@ -4,21 +4,18 @@ from matplotlib import pyplot as plt
 from tensorflow.keras.datasets import mnist, cifar10, fashion_mnist, cifar100
 import os
 import random
-# (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-# data = np.load('ood_data/outexp_nosmcifar_base_adv.npy')
-# labels  = np.load('ood_data/outexp_nosmcifar_base_adv_labels.npy')
-# print(labels[0])
-# print(y_test[0])
-#
-# zeros_adv = data[np.where(labels == 3)]
-# print(np.shape(zeros_adv))
-# zeros = x_test[np.where(labels == 3)]
-# #zeros_adv[10] = (zeros_adv[10] * 255).astype('int8')
-# plt.imshow(zeros_adv[10])
-# #plt.imshow(np.squeeze(zeros[10]))
-# #plt.savefig('ood_data/cifar_frog_true.png', dpi = 300)
-# plt.imsave('ood_data/cifar_cat_adv.png', (zeros_adv[10]), vmin = 0, vmax = 1)
-# plt.show()
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+data = np.load('ood_data/adversarial/mnist/mnist_base_model_adv.npy')
+labels  = np.load('ood_data/adversarial/mnist/mnist_base_model_adv_labels.npy')
+#print(labels[0])
+print(y_test[0])
+
+zeros_adv = data[np.where(labels == 0)]
+#print(np.shape(zeros_adv))
+#zeros = x_test[np.where(y_test == 0)]
+#plt.imshow(np.squeeze(zeros_adv[10]))
+plt.imsave('ood_data/mnist_adv_0.5.png', (np.squeeze(zeros_adv[10])))
+#plt.show()
 
 # label = 6
 # corruptions = os.listdir('./ood_data/mnist_c')
@@ -55,11 +52,11 @@ import random
 #     plt.imsave('ood_data/fashion_mnist_{}.png'.format(label), x_test[im])
 #     #plt.show()
 
-(x_train, y_train), (x_test, y_test) = cifar100.load_data()
-
-labels = random.sample(range(0, 100), 10)
-
-for label in labels:
-    im = np.where(y_test == label)[0][0]
-    plt.imsave('ood_data/cifar100_images/cifar100_{}.png'.format(label), x_test[im])
-    #plt.show()
+# (x_train, y_train), (x_test, y_test) = cifar100.load_data()
+#
+# labels = random.sample(range(0, 100), 10)
+#
+# for label in labels:
+#     im = np.where(y_test == label)[0][0]
+#     plt.imsave('ood_data/cifar100_images/cifar100_{}.png'.format(label), x_test[im])
+#     #plt.show()
