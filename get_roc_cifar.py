@@ -89,7 +89,7 @@ print("Time for Dissector: ", (end - start))
 # # # DISSECTOR-Linear CIFAR10-C: 0.622
 # # # DISSECTOR-Linear CIFAR10-Adv: 0.8685
 # #
-model = load_model('model/model_outexp_nosmcifar_finetuned.h5')
+model = load_model('model/model/cifar_models_finetuned/model_outexp_nosmcifar_finetuned.h5')
 
 #x_test_corrupted = np.load('ood_data/adversarial/cifar10/outexp_nosmcifar_finetune_adv.npy')
 #x_test_corrupted = (x_test_corrupted / 255.0)

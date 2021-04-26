@@ -11,11 +11,10 @@ from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D,
 from tensorflow.keras.models import load_model
 
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma'
-model = load_model(root+'/model/model_outexp_nosmcifar.h5')
+model = load_model(root+'/model/model/mnist_models/model_mnist_10.h5')
 
 print(model.summary())
-l_names = ['conv2d', 'conv2d_1', 'max_pooling2d', 'conv2d_2', 'conv2d_3','max_pooling2d_1',
-           'conv2d_4', 'conv2d_5', 'max_pooling2d_2','dense', 'dense_1'] #Pass in all layers except final dense softmax
+l_names = ['conv2d_16', 'conv2d_17', 'max_pooling2d_8', 'dense_16'] #Pass in all layers except final dense softmax
 
 for i, l_name in enumerate(l_names):
             mid = model.get_layer(l_name).output
@@ -34,7 +33,7 @@ for i, l_name in enumerate(l_names):
 
             print(n_model.summary())
             n_model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics='accuracy')
-            n_model.save(root+"/submodels_dissector_latest/model_outexp_nosmcifar/submodel_{}.h5".format(i))
+            n_model.save(root+"/submodels_dissector_latest/model_mnist/model_10/submodel_{}.h5".format(i))
 
 # while i < len(layer_list):
 #     layers = layer_list[0:i+1]
