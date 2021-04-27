@@ -10,14 +10,14 @@ import tensorflow.keras.backend as K
 from scipy.special import softmax as sf
 import numpy as np
 
-def train(model, train_datagen):
+def train(model, train_datagen, i):
 
     train_loss_results = []
     train_accuracy_results = []
     root = "D:\Rwiddhi\Github"
 
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-    x_train = x_train.reshape(-1, 28, 28, 1)
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    #x_train = x_train.reshape(-1, 28, 28, 1)
     x_train = x_train.astype("float32")
     x_test = x_test.astype("float32")
     x_train = (x_train / 255.0)
@@ -27,10 +27,10 @@ def train(model, train_datagen):
     y_test = utils.to_categorical(y_test, 10)
 
     train_image_generator_out = tf.data.Dataset.from_generator(lambda: train_datagen.flow_from_directory(
-        root + '\ImageNet-Datasets-Downloader\dataset_new\imagenet_images', batch_size=32, target_size=(28, 28), color_mode='grayscale'),
+        root + '\ImageNet-Datasets-Downloader\dataset_new\imagenet_images', batch_size=64, target_size=(32, 32)),
         output_types= (tf.float32, tf.int16))
 
-    train_image_generator_in = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(32)
+    train_image_generator_in = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(64)
 
     #train_image_generator_in = train_datagen.flow(x_train, y_train, batch_size=64, shuffle=False)
     num_epochs = 10
@@ -44,7 +44,7 @@ def train(model, train_datagen):
         epoch_loss = []
         epoch_acc = []
         loss_avg = 0.0
-        step = int(x_train.shape[0] / 32)
+        step = int(x_train.shape[0] / 64)
         # Training loop - using batches of 32
         concat_generator = tf.data.Dataset.zip((train_image_generator_in, train_image_generator_out))
         for d_in, d_out in tqdm.tqdm((concat_generator), total=step):
@@ -76,7 +76,7 @@ def train(model, train_datagen):
         if epoch % 1 == 0:
             print("Epoch {:03d}: Loss: {:.3f}".format(epoch,np.mean(epoch_loss)))
 
-    model.save("D:\Rwiddhi\Github\model\model_mnist_finetuned.h5")
+    model.save("D:\Rwiddhi\Github\model\model_outexp_nosmcifar_finetuned_{}.h5".format(i))
 
 
 train_datagen = ImageDataGenerator(
@@ -89,12 +89,13 @@ train_datagen = ImageDataGenerator(
 opt = Adam(learning_rate=1e-5)
 
 root = "D:\Rwiddhi\Github"
-model = load_model(root+'\model\model_mnist.h5')
+for i in range(1, 10):
+    model = load_model(root+'\model\cifar_models\model_outexp_nosmcifar_{}.h5'.format(i))
 
-# model.compile(loss='categorical_crossentropy',
-#               optimizer=opt,
-#               metrics=['accuracy'])
+    # model.compile(loss='categorical_crossentropy',
+    #               optimizer=opt,
+    #               metrics=['accuracy'])
 
 
-train(model, train_datagen)
+    train(model, train_datagen, i)
 

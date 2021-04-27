@@ -33,7 +33,7 @@ class Model():
 
         self.args = args
 
-    def train(self):
+    def train(self, i):
         if self.args.d == 'mnist':
             (x_train, y_train), (x_test, y_test) = mnist.load_data()
             x_train = x_train.reshape(-1, 28, 28, 1)
@@ -93,10 +93,10 @@ class Model():
             batch_size=128,
             shuffle=True,
             verbose=1,
-            validation_data=(x_test, y_test),
+            validation_split=0.2,
         )
 
-        model.save("D:\Rwiddhi\Github\model\model_outexp_nosm{}.h5".format(args.d))
+        model.save("D:\Rwiddhi\Github\model\model_outexp_nosm{}_{}.h5".format(args.d, i))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -104,5 +104,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert args.d in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
 
-    model = Model(args)
-    model.train()
+    for i in range(1, 10):
+        model = Model(args)
+        model.train(i)

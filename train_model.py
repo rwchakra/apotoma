@@ -33,7 +33,7 @@ class MNISTModel():
 
         self.args = args
 
-    def train(self):
+    def train(self, i):
         if self.args.d == "mnist":
             (x_train, y_train), (x_test, y_test) = mnist.load_data()
             x_train = x_train.reshape(-1, 28, 28, 1)
@@ -111,7 +111,7 @@ class MNISTModel():
             validation_data=(x_test, y_test),
         )
 
-        model.save("./model/model_{}.h5".format(args.d))
+        model.save("./model/model_{}_{}.h5".format(args.d, i+1))
 
 
 
@@ -173,8 +173,9 @@ if __name__ == "__main__":
     assert args.d in ["mnist", "cifar"], "Dataset should be either 'mnist' or 'cifar'"
 
 
-    #model = MNISTModel(args)
-    model = LeNet4(args)
-    #model = MNISTModel(args)
+    for i in range(1, 10):
+        model = MNISTModel(args)
+        #model = LeNet4(args)
+        #model = MNISTModel(args)
 
-    model.train()
+        model.train(i)

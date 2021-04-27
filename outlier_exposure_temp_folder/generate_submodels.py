@@ -10,8 +10,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D, ZeroPadding2D, AveragePooling2D
 from tensorflow.keras.models import load_model
 
-root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma'
-model = load_model(root+'/model/model_outexp_nosmcifar.h5')
+root = 'D:\Rwiddhi\Github\model'
+model = load_model(root+'\model_outexp_nosmcifar_1.h5')
 
 print(model.summary())
 l_names = ['conv2d', 'conv2d_1', 'max_pooling2d', 'conv2d_2', 'conv2d_3','max_pooling2d_1',
@@ -34,7 +34,7 @@ for i, l_name in enumerate(l_names):
 
             print(n_model.summary())
             n_model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics='accuracy')
-            n_model.save(root+"/submodels_dissector/model_outexp_nosmcifar/submodel_{}.h5".format(i))
+            n_model.save("D:\Rwiddhi\Github\model\submodels_dissector\model_outexp_nosmcifar\model_2\submodel_{}.h5".format(i))
 
 # while i < len(layer_list):
 #     layers = layer_list[0:i+1]
