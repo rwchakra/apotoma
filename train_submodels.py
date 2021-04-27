@@ -23,15 +23,15 @@ x_test = (x_test / 255.0)
 y_train = utils.to_categorical(y_train, 10)
 y_test = utils.to_categorical(y_test, 10)
 
-#models = os.listdir("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest/model_mnist")
+#models = os.listdir("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest_v2/model_mnist")
 models = ['model_2', 'model_3', 'model_4', 'model_5', 'model_6', 'model_7', 'model_8', 'model_9', 'model_10']
 for model in models:
 
     print("Training model: ", model)
-    sub_models = os.listdir("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest/model_outexp_nosmcifar/"+model)[:-1]
+    sub_models = os.listdir("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest_v2/model_outexp_nosmcifar/"+model)[:-1]
 
     for i, m in enumerate(sub_models):
-        s_model = load_model("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest/model_outexp_nosmcifar/"+model
+        s_model = load_model("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest_v2/model_outexp_nosmcifar/"+model
                             +"/"+m)
         s_model.fit(
             x_train,
@@ -43,5 +43,5 @@ for model in models:
             validation_split=0.2,
         )
 
-        s_model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest/model_outexp_nosmcifar/"+model
+        s_model.save("/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/submodels_dissector_latest_v2/model_outexp_nosmcifar/"+model
                             +"/"+m)

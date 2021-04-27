@@ -48,7 +48,7 @@ print(roc_auc_score(y_true, y_scores))
 
 args = argparse.Namespace()
 args.model_path = root+'/model/model_mnist.h5'
-args.sub_model_path = root+'/submodels_dissector_latest/model_mnist/'
+args.sub_model_path = root+'/submodels_dissector_latest_v2/model_mnist/'
 diss = dissector.Dissector(model, config=args)
 start = time.time()
 sv_scores_corrupted = diss.sv_score(x_test_corrupted)

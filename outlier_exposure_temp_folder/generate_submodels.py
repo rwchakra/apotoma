@@ -33,7 +33,7 @@ for i, l_name in enumerate(l_names):
 
             print(n_model.summary())
             n_model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics='accuracy')
-            n_model.save(root+"/submodels_dissector_latest/model_mnist/model_10/submodel_{}.h5".format(i))
+            n_model.save(root+"/submodels_dissector_latest_v2/model_mnist/model_10/submodel_{}.h5".format(i))
 
 # while i < len(layer_list):
 #     layers = layer_list[0:i+1]
