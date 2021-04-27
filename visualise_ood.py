@@ -5,8 +5,8 @@ from tensorflow.keras.datasets import mnist, cifar10, fashion_mnist, cifar100
 import os
 import random
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
-data = np.load('ood_data/adversarial/mnist/mnist_base_model_adv.npy')
-labels  = np.load('ood_data/adversarial/mnist/mnist_base_model_adv_labels.npy')
+data = np.load('ood_data/adversarial/mnist/mnist_base_model_adv_1.npy')
+labels  = np.load('ood_data/adversarial/mnist/mnist_base_model_adv_1_labels.npy')
 #print(labels[0])
 print(y_test[0])
 

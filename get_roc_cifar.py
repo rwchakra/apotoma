@@ -19,7 +19,7 @@ import time
 root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
 
 
-#x_test_corrupted = np.load('ood_data/adversarial/cifar10/outexp_nosmcifar_base_adv.npy')
+#x_test_corrupted = np.load('ood_data/adversarial/cifar10/cifar_base_model_adv_1.npy')
 (_, _), (x_test_corrupted, y_test_corrupted) = cifar100.load_data()
 x_test_corrupted = (x_test_corrupted / 255.0)
 x_test_corrupted = x_test_corrupted.astype("float32")
@@ -91,7 +91,7 @@ print("Time for Dissector: ", (end - start))
 # #
 model = load_model('model/model/cifar_models_finetuned/model_outexp_nosmcifar_finetuned.h5')
 
-#x_test_corrupted = np.load('ood_data/adversarial/cifar10/outexp_nosmcifar_finetune_adv.npy')
+#x_test_corrupted = np.load('ood_data/adversarial/cifar10/cifar_base_model_finetuned_adv_1.npy')
 #x_test_corrupted = (x_test_corrupted / 255.0)
 #x_test_corrupted = x_test_corrupted.astype("float32")
 

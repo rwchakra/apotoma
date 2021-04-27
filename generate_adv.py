@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 
 batch_size = 500
 
-for i in range(2, 11):
-    model = load_model('model/model/mnist_models/model_mnist_{}.h5'.format(i))
+for m in range(1, 10):
+    model = load_model('model/model/cifar_models_finetuned/model_outexp_nosmcifar_finetuned_{}.h5'.format(m))
     root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
 
-    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+    (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
     x_train = x_train.astype("float32") / 255
     x_test = x_test.astype("float32")
     x_test = x_test / 255
     x_train = np.expand_dims(x_train, -1)
     x_test = np.expand_dims(x_test, -1)
     y_train = tf.keras.utils.to_categorical(y_train, 10)
-    x_test = np.reshape(x_test, (-1, batch_size, 28, 28, 1))
+    x_test = np.reshape(x_test, (-1, batch_size, 32, 32, 3))
     y_test = np.reshape(y_test, (-1, batch_size))
 
     adv = []
@@ -31,13 +31,13 @@ for i in range(2, 11):
         adv.append(advs[0].numpy())
         adv_labels.extend(y_test[i])
         print(f"Completed foolbox batch {i}")
-        break
-    advs = np.concatenate(adv).reshape((-1, 28, 28, 1))
+    advs = np.concatenate(adv).reshape((-1, 32, 32, 3))
 
-    test = advs[10]
+    #test = advs[10]
 
     #plt.imshow(test)
     #plt.show()
     #plt.imsave('ood_data/mnist_adv_0.0.png', np.squeeze(test))
-    np.save(root+'/ood_data/adversarial/mnist/mnist_finetuned_base_model_adv_0.1', advs)
-    np.save(root+'/ood_data/adversarial/mnist/mnist_finetuned_base_model_adv_labels_0.1', adv_labels)
+    np.save(root+'/ood_data/all_cifar_models_finetuned/cifar_base_model_finetuned_adv_{}'.format(m+1), advs)
+    np.save(root+'/ood_data/all_cifar_models_finetuned/cifar_base_model_finetuned_adv_{}_labels'.format(m+1), adv_labels)
+    print("Completed model ", m)

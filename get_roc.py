@@ -68,7 +68,7 @@ print("Time for dissector: ", (end - start))
 
 model = load_model('model/model/mnist_models_finetuned/model_mnist_finetuned.h5')
 
-#x_test_corrupted = np.load('ood_data/adversarial/mnist/mnist_finetuned_base_model_adv.npy')
+#x_test_corrupted = np.load('ood_data/adversarial/mnist/mnist_base_model_finetuned_adv_1.npy')
 #x_test_corrupted = (x_test_corrupted / 255.0)
 #x_test_corrupted = x_test_corrupted.astype("float32")
 start = time.time()
