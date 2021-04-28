@@ -50,6 +50,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.models import load_model
 from tqdm import tqdm
 import argparse
+import re
 
 
 class Dissector:
@@ -176,7 +177,7 @@ class Dissector:
 
         assert growth_type in ['linear', 'logarithmic', 'exponential'], "Invalid weight growth type"
         for i, m in enumerate(sub_models):
-            l_number = int(m.split("_")[1]) + 1
+            l_number = int(int(re.search(r'\d+', m).group())) + 1
 
             if growth_type == 'linear':
 

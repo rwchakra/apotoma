@@ -78,7 +78,7 @@ def train(model, train_datagen):
         if epoch % 1 == 0:
             print("Epoch {:03d}: Loss: {:.3f}".format(epoch,np.mean(epoch_loss)))
 
-    model.save(root+"/model/model_mnist_finetuned.h5")
+    model.save(root+"/model/model_mnist_finetuned_1.h5")
 
 
 root = '/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma/'
@@ -92,7 +92,7 @@ train_datagen = ImageDataGenerator(
 opt = Adam(learning_rate=1e-5)
 
 root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
-model = load_model(root+'/model/model_mnist.h5')
+model = load_model(root+'/model/model_mnist_1.h5')
 
 # model.compile(loss='categorical_crossentropy',
 #               optimizer=opt,
