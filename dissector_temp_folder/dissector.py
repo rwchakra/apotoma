@@ -125,9 +125,11 @@ class Dissector:
 
         m = load_model(self.config.model_path)
         m_preds = m.predict(x_test)
-        f = np.exp(m_preds - np.amax(m_preds, axis=1)[:, None])
-        f = f / np.sum(f[:, None], axis=-1)
-        #m_preds = np.exp(m_preds) / np.sum(np.exp(m_preds), axis=-1, keepdims=True)
+        #Uncomment below if running for CIFAR. Not required for MNIST
+
+        #f = np.exp(m_preds - np.amax(m_preds, axis=1)[:, None])
+        #f = f / np.sum(f[:, None], axis=-1)
+
         test_preds = np.argmax(f, axis=1)
         sub_models = os.listdir(self.config.sub_model_path)
         print(sub_models)

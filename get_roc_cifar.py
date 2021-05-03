@@ -25,7 +25,7 @@ datasets = ['cifar100', 'cifar10-c', 'cifar-fgsm']
 x_test_nominal = (x_test_nominal / 255.0)
 x_test_nominal = x_test_nominal.astype("float32")
 
-for model_n in range(8, 10):
+for model_n in range(0, 10):
     model_score = np.zeros((3, 3))
     for j, ds in enumerate(datasets):
         if ds == 'cifar100':
@@ -53,6 +53,8 @@ for model_n in range(8, 10):
         g = g/np.sum(g[:, None], axis=-1)
         #preds_nominal = np.exp(preds_nominal) / np.sum(np.exp(preds_nominal), axis=-1, keepdims=True)
         scores_nominal = np.max(g, axis=1)
+        end = time.time()
+        print("Softmax time: {}".format(ds), (end - start))
 
         if ds == 'cifar10-c':
             avg_sc = 0
@@ -78,23 +80,23 @@ for model_n in range(8, 10):
 
 
         else:
-
+            start = time.time()
             preds_corrupted = model.predict(x_test_corrupted)
             f = np.exp(preds_corrupted - np.amax(preds_corrupted, axis=1)[:, None])
             f = f / np.sum(f[:, None], axis=-1)
             # preds_corrupted = np.exp(preds_nominal) / np.sum(np.exp(preds_nominal), axis=-1, keepdims=True)
             scores_corrupted = np.max(f, axis=1)
-
+            end = time.time()
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
 
             y_true = np.concatenate([y_true_corrupted, y_true_nominal])
             y_scores = np.concatenate([scores_corrupted, scores_nominal]) * -1
 
-            end = time.time()
+
             print(roc_auc_score(y_true, y_scores))
             model_score[0][j] = roc_auc_score(y_true, y_scores)
-            print("Time taken for Softmax: ", (end - start))
+            print("Time taken for Softmax: {}".format(ds), (end - start))
         # #     #Vanilla sofmax MNIST-C: 0.5985
         # #     #Vanilla softmax MNIST-adv: 1.0
         # #     #Vanilla sofmax CIFAR10-C: 0.63
@@ -134,6 +136,7 @@ for model_n in range(8, 10):
 
         else:
 
+            start = time.time()
             diss = dissector.Dissector(model, config=args)
 
             sv_scores_corrupted = diss.sv_score(x_test_corrupted)
@@ -143,15 +146,15 @@ for model_n in range(8, 10):
 
             sv_scores_nominal = diss.sv_score(x_test_nominal)
             pv_scores_nominal = diss.pv_scores(weights, sv_scores_nominal)
-
+            end = time.time()
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
             y_true = np.concatenate([y_true_corrupted, y_true_nominal])
 
             y_scores = np.concatenate([pv_scores_corrupted, pv_scores_nominal]) * -1
-            end = time.time()
+
             print(roc_auc_score(y_true, y_scores))
-            print("Time for Dissector: ", (end - start))
+            print("Time for Dissector: {}".format(ds), (end - start))
             model_score[1][j] = roc_auc_score(y_true, y_scores)
 
         # # # #DISSECTOR-Linear MNIST-C: 0.6144
@@ -181,16 +184,16 @@ for model_n in range(8, 10):
             #preds_nominal = np.exp(preds_nominal - np.max(preds_nominal)) / np.sum(np.exp(preds_nominal - np.max(preds_nominal)), axis=-1, keepdims=True)
             scores_corrupted = np.max(f, axis=1)
             scores_nominal = np.max(g, axis=1)
-
+            end = time.time()
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
 
             y_true = np.concatenate([y_true_corrupted, y_true_nominal])
             y_scores = np.concatenate([scores_corrupted, scores_nominal]) * -1
 
-            end = time.time()
+
             print(roc_auc_score(y_true, y_scores))
-            print("Time for OE: ", (end - start))
+            print("Time for OE: {}".format(ds), (end - start))
 
             model_score[2][j] = roc_auc_score(y_true, y_scores)
 
@@ -224,10 +227,11 @@ for model_n in range(8, 10):
             model_score[2][j] = avg_sc/5
 
         else:
-
+            start = time.time()
             preds_corrupted = model.predict(x_test_corrupted)
             f = np.exp(preds_corrupted - np.amax(preds_corrupted, axis=1)[:, None])
             f = f / np.sum(f[:, None], axis=-1)
+            end =  time.time()
             preds_nominal = model.predict(x_test_nominal)
             g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
             g = g / np.sum(g[:, None], axis=-1)
@@ -235,16 +239,15 @@ for model_n in range(8, 10):
             # preds_nominal = np.exp(preds_nominal - np.max(preds_nominal)) / np.sum(np.exp(preds_nominal - np.max(preds_nominal)), axis=-1, keepdims=True)
             scores_corrupted = np.max(f, axis=1)
             scores_nominal = np.max(g, axis=1)
-
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
 
             y_true = np.concatenate([y_true_corrupted, y_true_nominal])
             y_scores = np.concatenate([scores_corrupted, scores_nominal]) * -1
 
-            end = time.time()
-            print(roc_auc_score(y_true, y_scores))
 
+            print(roc_auc_score(y_true, y_scores))
+            print("Time for OE: {}".format(ds), (end - start))
             model_score[2][j] = roc_auc_score(y_true, y_scores)
 
 
