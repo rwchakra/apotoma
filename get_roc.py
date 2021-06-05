@@ -25,6 +25,11 @@ x_test_nominal = x_test_nominal.reshape(-1, 28, 28, 1)
 x_test_nominal = (x_test_nominal / 255.0)
 x_test_nominal = x_test_nominal.astype("float32")
 
+model_times_sm = []
+model_times_diss = []
+model_times_oe = []
+times = {'diss': [], 'oe': [], 'sm': []}
+
 for model_n in range(0, 10):
     model_score = np.empty((3, 3))
     for j,ds in enumerate(datasets):
@@ -49,29 +54,31 @@ for model_n in range(0, 10):
             x_test_corrupted = x_test_corrupted.reshape(-1, 28, 28, 1)
             x_test_corrupted = (x_test_corrupted / 255.0)
             x_test_corrupted = x_test_corrupted.astype("float32")
-
+        #
         model = load_model('model/model/mnist_models/model_mnist_'+str(model_n+1)+'.h5')
+        print("Running for vanilla softmax...")
         start = time.time()
         preds_corrupted = model.predict(x_test_corrupted)
-        #f = np.exp(preds_corrupted - np.amax(preds_corrupted, axis=1)[:, None])
-        #f = f / np.sum(f[:, None], axis=-1)
+        # #f = np.exp(preds_corrupted - np.amax(preds_corrupted, axis=1)[:, None])
+        # #f = f / np.sum(f[:, None], axis=-1)
         end = time.time()
         preds_nominal = model.predict(x_test_nominal)
-        #g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
-        #g = g / np.sum(g[:, None], axis=-1)
-
-        scores_corrupted = np.max(f, axis=1)
-        scores_nominal = np.max(g, axis=1)
-
+        # #g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
+        # #g = g / np.sum(g[:, None], axis=-1)
+        #
+        scores_corrupted = np.max(preds_corrupted, axis=1)
+        scores_nominal = np.max(preds_nominal, axis=1)
+        #
         y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
         y_true_nominal = np.zeros((x_test_nominal.shape[0]))
 
         y_true = np.concatenate([y_true_corrupted, y_true_nominal])
         y_scores = np.concatenate([scores_corrupted, scores_nominal]) * -1
-
-        print("Time for Softmax: {}".format(ds), (end - start))
+        #
+        # print("Time for Softmax: {}".format(ds), (end - start))
         print(roc_auc_score(y_true, y_scores))
         model_score[0][j] = roc_auc_score(y_true, y_scores)
+        model_times_sm.append((end-start))
         #Vanilla sofmax MNIST-C: 0.5985
         #Vanilla softmax MNIST-adv: 1.0
 
@@ -93,9 +100,10 @@ for model_n in range(0, 10):
         print(roc_auc_score(y_true, y_scores))
         print("Time for dissector: {}".format(ds), (end - start))
         model_score[1][j] = roc_auc_score(y_true, y_scores)
-        #DISSECTOR-Linear MNIST-C: 0.6144
-        #DISSECTOR-Linear MNIST-Adv: 0.6218
-
+        model_times_diss.append((end-start))
+        # #DISSECTOR-Linear MNIST-C: 0.6144
+        # #DISSECTOR-Linear MNIST-Adv: 0.6218
+        #
         print("Running for OE....")
         model = load_model('model/model/mnist_models_finetuned/model_mnist_finetuned_'+str(model_n+1)+'.h5')
 
@@ -112,8 +120,8 @@ for model_n in range(0, 10):
             preds_nominal = model.predict(x_test_nominal)
             #g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
             #g = g / np.sum(g[:, None], axis=-1)
-            scores_corrupted = np.max(f, axis=1)
-            scores_nominal = np.max(g, axis=1)
+            scores_corrupted = np.max(preds_corrupted, axis=1)
+            scores_nominal = np.max(preds_nominal, axis=1)
 
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
@@ -124,6 +132,7 @@ for model_n in range(0, 10):
             print(roc_auc_score(y_true, y_scores))
             print("Time for OE: {}".format(ds), (end - start))
             model_score[2][j] = roc_auc_score(y_true, y_scores)
+            model_times_oe.append((end-start))
 
         else:
             start = time.time()
@@ -136,8 +145,8 @@ for model_n in range(0, 10):
             #g = g / np.sum(g[:, None], axis=-1)
 
             # preds_nominal = np.exp(preds_nominal - np.max(preds_nominal)) / np.sum(np.exp(preds_nominal - np.max(preds_nominal)), axis=-1, keepdims=True)
-            scores_corrupted = np.max(f, axis=1)
-            scores_nominal = np.max(g, axis=1)
+            scores_corrupted = np.max(preds_corrupted, axis=1)
+            scores_nominal = np.max(preds_nominal, axis=1)
 
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
@@ -150,12 +159,23 @@ for model_n in range(0, 10):
 
             model_score[2][j] = roc_auc_score(y_true, y_scores)
             print("Time for OE: {}".format(ds), (end - start))
+            model_times_oe.append((end-start))
             #OE MNIST-C: 0.8327
             #OE MNIST-ADV: 1.0
 
-    df = pd.DataFrame(model_score)
-    df.to_csv(root + '/model_' + str(model_n + 1) + '.csv', index=False)
+    print("Model: ", str(model_n + 1))
+    print("SM times", model_times_sm)
+    print("Diss times", model_times_diss)
+    print("OE times", model_times_oe)
+    #df = pd.DataFrame(model_score)
+    #df.to_csv(root + '/mnist_auc_' + str(model_n + 1) + '.csv', index=False)
 
+times['oe'] = model_times_oe
+times['sm'] = model_times_sm
+times['diss'] = model_times_diss
 
+np.save(root+'/model_times_mnist.npy', times)
+#print(np.mean(model_times))
+#print(np.std(model_times))
 
 

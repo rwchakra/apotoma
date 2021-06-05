@@ -26,7 +26,7 @@ if __name__ == '__main__':
     root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
 
     args = {'d': 'mnist', 'is_classification': True,
-            'dsa':False, 'lsa': True, 'batch_size': 128,
+            'dsa':False, 'lsa':True, 'batch_size': 128,
             'var_threshold': 1e-5, 'upper_bound': 2000,
             'n_bucket': 1000, 'num_classes': 10,
             'layer_names': ['activation_3'], 'saved_path': './tmp1/'}
@@ -35,11 +35,12 @@ if __name__ == '__main__':
     assert args['lsa'] ^ args['dsa'], "Select either 'lsa' or 'dsa'"
     print(args)
 
-    #datasets = ['fmnist', 'mnist-c', 'mnist-fgsm']
-    datasets = ['cifar100', 'cifar-fgsm']
-    (x_train, y_train), (x_test_nominal, y_test) = cifar10.load_data()
-    #x_train = x_train.reshape(-1, 28, 28, 1)
-    #x_test_nominal = x_test_nominal.reshape(-1, 28, 28, 1)
+    datasets = ['fmnist', 'mnist-c', 'mnist-fgsm']
+    #datasets = ['cifar100', 'cifar-fgsm']
+    (x_train, y_train), (x_test_nominal, y_test) = mnist.load_data()
+    #(_, _), (x_test_nominal, y_test_nominal) = cifar10.load_data()
+    x_train = x_train.reshape(-1, 28, 28, 1)
+    x_test_nominal = x_test_nominal.reshape(-1, 28, 28, 1)
 
     x_train = x_train.astype("float32")
     x_train = (x_train / 255.0) - (1.0 - CLIP_MAX)
@@ -52,25 +53,29 @@ if __name__ == '__main__':
     #     print(m.layers[-1])
 
     model_score = np.empty((10, 3))
+    model_times = []
     for model_n in range(0, 10):
         print("Running for model: ", model_n)
-        model = load_model("./model/model/cifar_models/model_outexp_nosmcifar_" + str(model_n+1) + ".h5")
+        model = load_model("./model/model/mnist_models/model_mnist_" + str(model_n+1) + ".h5")
+        #model = load_model('model/model/cifar_models/model_outexp_nosmcifar_' + str(model_n) + '.h5')
         model.summary()
         # Load pre-trained model.
         for j, ds in enumerate(datasets):
 
-            if ds == 'cifar100':
-                (_, _), (x_adv, _) = cifar100.load_data()
+            if ds == 'fmnist':
+                (_, _), (x_adv, _) = fashion_mnist.load_data()
                 x_adv = (x_adv / 255.0) - (1.0 - CLIP_MAX)
                 x_adv = x_adv.astype("float32")
 
             elif ds == 'mnist-c':
                 x_adv = np.load('mnist_corrupted.npy')
+                #x_adv = np.load('ood_data/cifar10-c/corrupted_images_v2.npy')
                 x_adv = (x_adv / 255.0) - (1.0 - CLIP_MAX)
                 x_adv = x_adv.astype("float32")
 
             else:
-                x_adv = np.load("ood_data/all_cifar_models/cifar_base_model_adv_"+str(model_n + 1)+".npy")
+                x_adv = np.load("ood_data/all_mnist_models/mnist_base_model_adv_"+str(model_n + 1)+".npy")
+                #x_adv = np.load('ood_data/all_cifar_models/cifar_base_model_adv_' + str(model_n + 1) + '.npy')
                 x_adv = (x_adv / 255.0) - (1.0 - CLIP_MAX)
                 x_adv = x_adv.astype("float32")
 
@@ -98,7 +103,7 @@ if __name__ == '__main__':
             # y_true = np.concatenate([y_true_corrupted, y_true_nominal])
 
 
-            config = SurpriseAdequacyConfig(saved_path='./tmp1/',layer_names=[model.layers[-1].name], ds_name='cifar', num_classes=10,
+            config = SurpriseAdequacyConfig(saved_path='./tmp1/',layer_names=[model.layers[-2].name], ds_name='mnist', num_classes=10,
                                             is_classification=True)
             # Usage of Library
             novelty_score = None
@@ -141,9 +146,15 @@ if __name__ == '__main__':
                 score = _auc_roc(scores_test[0], scores_adv[0])
 
                 print(score)
+                print("Model: ", str(model_n + 1))
                 print("Time taken: {}".format(ds), (end - start))
+                print("Model times", model_times)
                 model_score[model_n][j] = score
+                model_times.append((end-start))
+                print(np.mean(model_times))
+                print(np.std(model_times))
 
-        break
-    # df = pd.DataFrame(model_score)
-    # df.to_csv(root+'/lsa_scores.csv', index=False)
+        #df = pd.DataFrame(model_score)
+        #df.to_csv(root+'/mnist_lsa_auc_'+str(model_n+1)+'.csv', index = False)
+
+    np.save(root+'/lsa_mnist_times.npy', model_times)

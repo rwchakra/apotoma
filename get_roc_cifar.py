@@ -18,13 +18,16 @@ import time
 import pandas as pd
 
 root = "/Users/rwiddhichakraborty/PycharmProjects/Thesis/apotoma"
-datasets = ['cifar100', 'cifar10-c', 'cifar-fgsm']
+datasets = ['cifar100','cifar-fgsm']
 
 (_, _), (x_test_nominal, y_test_nominal) = cifar10.load_data()
 #x_test_nominal = x_test_nominal.reshape(-1, 28, 28, 1)
 x_test_nominal = (x_test_nominal / 255.0)
 x_test_nominal = x_test_nominal.astype("float32")
-
+model_times_sm = []
+model_times_diss = []
+model_times_oe = []
+times = {'diss': [], 'oe': [], 'sm': []}
 for model_n in range(0, 10):
     model_score = np.zeros((3, 3))
     for j, ds in enumerate(datasets):
@@ -47,14 +50,11 @@ for model_n in range(0, 10):
 
         model = load_model('model/model/cifar_models/model_outexp_nosmcifar_'+str(model_n)+'.h5')
         print("Running for vanilla softmax...")
-        start = time.time()
         preds_nominal = model.predict(x_test_nominal)
         g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
         g = g/np.sum(g[:, None], axis=-1)
         #preds_nominal = np.exp(preds_nominal) / np.sum(np.exp(preds_nominal), axis=-1, keepdims=True)
         scores_nominal = np.max(g, axis=1)
-        end = time.time()
-        print("Softmax time: {}".format(ds), (end - start))
 
         if ds == 'cifar10-c':
             avg_sc = 0
@@ -96,12 +96,13 @@ for model_n in range(0, 10):
 
             print(roc_auc_score(y_true, y_scores))
             model_score[0][j] = roc_auc_score(y_true, y_scores)
-            print("Time taken for Softmax: {}".format(ds), (end - start))
-        # #     #Vanilla sofmax MNIST-C: 0.5985
-        # #     #Vanilla softmax MNIST-adv: 1.0
-        # #     #Vanilla sofmax CIFAR10-C: 0.63
-        # #     #Vanilla softmax CIFAR10-adv: 0.91
-        # #
+        #     print("Time taken for Softmax: {}".format(ds), (end - start))
+            model_times_sm.append((end-start))
+        # # #     #Vanilla sofmax MNIST-C: 0.5985
+        # # #     #Vanilla softmax MNIST-adv: 1.0
+        # # #     #Vanilla sofmax CIFAR10-C: 0.63
+        # # #     #Vanilla softmax CIFAR10-adv: 0.91
+        # # #
         print("Running for Dissector...")
         start = time.time()
         args = argparse.Namespace()
@@ -136,8 +137,9 @@ for model_n in range(0, 10):
 
         else:
 
-            start = time.time()
+
             diss = dissector.Dissector(model, config=args)
+            start = time.time()
 
             sv_scores_corrupted = diss.sv_score(x_test_corrupted)
             weights = diss.get_weights(growth_type='linear', alpha=0.9)
@@ -156,12 +158,13 @@ for model_n in range(0, 10):
             print(roc_auc_score(y_true, y_scores))
             print("Time for Dissector: {}".format(ds), (end - start))
             model_score[1][j] = roc_auc_score(y_true, y_scores)
-
-        # # # #DISSECTOR-Linear MNIST-C: 0.6144
-        # # # DISSECTOR-Linear MNIST-Adv: 0.6218
-        # # # DISSECTOR-Linear CIFAR10-C: 0.622
-        # # # DISSECTOR-Linear CIFAR10-Adv: 0.8685
-        # #
+            model_times_diss.append((end-start))
+        #
+        # # # # #DISSECTOR-Linear MNIST-C: 0.6144
+        # # # # DISSECTOR-Linear MNIST-Adv: 0.6218
+        # # # # DISSECTOR-Linear CIFAR10-C: 0.622
+        # # # # DISSECTOR-Linear CIFAR10-Adv: 0.8685
+        # # #
         print("Running for OE....")
         model = load_model('model/model/cifar_models_finetuned/model_outexp_nosmcifar_finetuned_'+str(model_n)+'.h5')
 
@@ -170,13 +173,14 @@ for model_n in range(0, 10):
             x_test_corrupted = (x_test_corrupted / 255.0)
             x_test_corrupted = x_test_corrupted.astype("float32")
 
-            start = time.time()
+
         #for i in range(5):
         #x_test_corrupted_intensity = x_test_corrupted[:, i]
-
+            start = time.time()
             preds_corrupted = model.predict(x_test_corrupted)
             f = np.exp(preds_corrupted - np.amax(preds_corrupted, axis=1)[:, None])
             f = f/np.sum(f[:, None], axis=-1)
+            end = time.time()
             preds_nominal = model.predict(x_test_nominal)
             g = np.exp(preds_nominal - np.amax(preds_nominal, axis=1)[:, None])
             g = g/np.sum(g[:, None], axis=-1)
@@ -184,7 +188,7 @@ for model_n in range(0, 10):
             #preds_nominal = np.exp(preds_nominal - np.max(preds_nominal)) / np.sum(np.exp(preds_nominal - np.max(preds_nominal)), axis=-1, keepdims=True)
             scores_corrupted = np.max(f, axis=1)
             scores_nominal = np.max(g, axis=1)
-            end = time.time()
+
             y_true_corrupted = np.ones((x_test_corrupted.shape[0]))
             y_true_nominal = np.zeros((x_test_nominal.shape[0]))
 
@@ -196,6 +200,7 @@ for model_n in range(0, 10):
             print("Time for OE: {}".format(ds), (end - start))
 
             model_score[2][j] = roc_auc_score(y_true, y_scores)
+            model_times_oe.append((end-start))
 
         elif ds =='cifar10-c':
             avg_sc = 0
@@ -249,11 +254,22 @@ for model_n in range(0, 10):
             print(roc_auc_score(y_true, y_scores))
             print("Time for OE: {}".format(ds), (end - start))
             model_score[2][j] = roc_auc_score(y_true, y_scores)
+            model_times_oe.append((end-start))
 
+    print("Model: ", str(model_n + 1))
+    print("SM times", model_times_sm)
+    print("Diss times", model_times_diss)
+    print("OE times", model_times_oe)
+    #df = pd.DataFrame(model_score)
+    #df.to_csv(root+'/cifar_auc_'+str(model_n+1)+'.csv', index = False)
 
-    df = pd.DataFrame(model_score)
-    df.to_csv(root+'/model_'+str(model_n+1)+'.csv', index = False)
+times['oe'] = model_times_oe
+times['sm'] = model_times_sm
+times['diss'] = model_times_diss
 
+np.save(root+'/model_times_cifar.npy', times)
+#print(np.mean(model_times))
+#print(np.std(model_times))
 
 
 

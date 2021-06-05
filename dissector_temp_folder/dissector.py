@@ -127,6 +127,7 @@ class Dissector:
         m_preds = m.predict(x_test)
         #Uncomment below if running for CIFAR. Not required for MNIST
 
+        f = m_preds
         #f = np.exp(m_preds - np.amax(m_preds, axis=1)[:, None])
         #f = f / np.sum(f[:, None], axis=-1)
 
