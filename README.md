@@ -2,7 +2,7 @@
 
 1) [Surprise Adequacy](https://arxiv.org/abs/1808.08444)
   a) Likelihood Based (LSA)
-  b) Dissector Based (DSA)
+  b) Distance Based (DSA)
 3) [Dissector](https://dl.acm.org/doi/10.1145/3377811.3380379)
 4) [Outlier Exposure](https://arxiv.org/abs/1812.04606)
 " 
