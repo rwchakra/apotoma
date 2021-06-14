@@ -76,31 +76,27 @@ class Dissector:
 
     def generate_sub_models(self, layer_list: []):
 
-        """Two options below: Either a sequential (for list of ints) or a functional (list of strs)"""
+        """Change model directory names as required below, assumes list of strings of layer names"""
+
 
         # for i, l_name in enumerate(l_names):
-        #     mid = self.model.get_layer(l_name).output
-        #     flat = Flatten()(mid)
+        #     mid = model.get_layer(l_name).output
+        #     if ('conv2d' in l_name or 'dense' in l_name):  # Add activation for trainable layers
+        #         act = Activation('relu')(mid)
+        #     else:
+        #         act = mid
+        #     if 'dense' not in l_name:  # Flatten only if not already a dense layer
+        #         flat = Flatten()(act)
+        #     else:
+        #         flat = mid
         #     final = Dense(10, activation='softmax')(flat)
-        #     n_model = Model(self.model.input, final)
+        #     n_model = tf.keras.Model(model.input, final)
         #     for l in n_model.layers[:-1]:
         #         l.trainable = False
         #
-        #     n_model.compile(loss=self.config.loss, optimizer=self.config.optimizer, metrics=self.config.metrics)
-        #     n_model.save(self.config.sub_model_path + "submodel_"+self.config.model_type+"_{}.h5".format(l, self.config.dataset_name))
-
-        for _, l in enumerate(layer_list):
-            n_model = Sequential()
-            for layer in self.model.layers[0:l]:
-                n_model.add(layer)
-
-            n_model.add(Flatten())
-            for layer in n_model.layers:
-                layer.trainable = False
-
-            n_model.add(Dense(self.config.num_classes, activation='softmax'))
-            n_model.compile(loss=self.config.loss, optimizer=self.config.optimizer, metrics=self.config.metrics)
-            n_model.save(self.config.sub_model_path + "submodel_"+self.config.model_type+"_{}.h5".format(l, self.config.dataset_name))
+        #     print(n_model.summary())
+        #     n_model.compile(loss='categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics='accuracy')
+        #     n_model.save(root + "/submodels_dissector_latest_v2/model_mnist/model_10/submodel_{}.h5".format(i))
 
     def train_sub_models(self, x_train: tf.data.Dataset, y_train: tf.data.Dataset, epochs: int):
 
